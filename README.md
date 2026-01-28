@@ -147,6 +147,14 @@ We're looking for collaborators in:
 
    Access the interface at `http://localhost:8000`
 
+### 🔐 Default Test Credentials
+
+For testing purposes, you can use these default credentials:
+- **Username**: `researcher`
+- **Password**: `easydiscovery##1`
+
+> **⚠️ Security Note**: These are default credentials for testing only. In production, change these immediately and use strong passwords.
+
 ## 🐳 Docker Deployment
 
 ### Quick Start with Docker Compose
