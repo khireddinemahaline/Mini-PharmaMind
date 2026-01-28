@@ -1,0 +1,58 @@
+services:
+  postgres:
+    image: postgres:14.19-alpine3.21
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data 
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 1m30s
+      timeout: 30s
+      retries: 5
+      start_period: 30s
+    networks:
+      - pharmatic-network
+
+
+  pharma-app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: mini-pharmamind:0.1.0-mini
+    container_name: mini-pharmamind-app
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    environment:
+      - DATABASE_URL=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+      - DEEPSEEK_API=${DEEPSEEK_API}
+      - CHAINLIT_AUTH_SECRET=${CHAINLIT_AUTH_SECRET}
+      - MLFLOW_ENABLED=false
+      - PYTHONUNBUFFERED=1
+      - ENVIRONMENT=${ENVIRONMENT}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    networks:
+      - pharmatic-network
+
+
+
+networks:
+  pharmatic-network:
+    driver: bridge
+  
+volumes:
+  postgres_data:
+    name: agentic-pharma-postgres-data

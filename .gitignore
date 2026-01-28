@@ -1,0 +1,133 @@
+# ========== Python ==========
+# Virtual environments
+.venv/
+venv/
+env/
+ENV/
+.python-version
+
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# Distribution / packaging
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+pip-wheel-metadata/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# PyInstaller
+*.manifest
+*.spec
+
+# Unit test / coverage reports
+htmlcov/
+.tox/
+.nox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+*.py,cover
+.hypothesis/
+.pytest_cache/
+pytestdebug.log
+
+# ========== Environment Variables ==========
+.env
+.env.local
+.env.*.local
+.env.development
+.env.production
+*.env
+!.env.example
+
+# ========== IDE / Editor ==========
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+*.iml
+.project
+.classpath
+.settings/
+
+# ========== Chainlit ==========
+.chainlit/
+.files/
+chainlit.db
+
+# ========== ML / AI Artifacts ==========
+mlruns/
+mlartifacts/
+*.pkl
+*.h5
+*.hdf5
+*.ckpt
+wandb/
+
+# ========== Session / Temporary Files ==========
+session_state/*.json
+!session_state/.gitkeep
+generated_reports/*.pdf
+generated_reports/*.html
+!generated_reports/.gitkeep
+*.log
+*.tmp
+*.temp
+*.bak
+
+# ========== Docker ==========
+docker-compose.override.yaml
+.dockerignore
+
+# ========== Database ==========
+*.db
+*.sqlite
+*.sqlite3
+prisma/migrations/dev.db
+
+# ========== Node.js (if applicable) ==========
+node_modules/
+package-lock.json
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# ========== UV Lock Files ==========
+# Uncomment if you want to ignore lock files (not recommended for reproducibility)
+# uv.lock
+
+# ========== OS-specific ==========
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# ========== Secrets and Keys ==========
+*.pem
+*.key
+*.crt
+secrets/
+credentials/
+OPEN_SOURCE_CHECKLIST.md
