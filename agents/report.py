@@ -7,7 +7,7 @@ from config.sytem_prompts import SYSTEM_PROMPTS_REPORT
 
 def report_agent():
     """
-    Create and return the ReportAgent with mlflow tracking.
+    Create and return the ReportAgent.
 
     Returns:
         AssistantAgent: Configured report agent for PDF generation

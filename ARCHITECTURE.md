@@ -31,7 +31,7 @@ PharmaMind is a multi-agent AI system designed for pharmaceutical research and d
 │              External Services & Storage                      │
 │  • LLM Providers (OpenAI/DeepSeek)                          │
 │  • PostgreSQL Database (Prisma)                             │
-│  • MLflow (Experiment Tracking)                             │
+│  • Arize Phoenix (Observability & Tracing)                   │
 └──────────────────────────────────────────────────────────────┘
 ```
 
@@ -141,7 +141,7 @@ SelectorGroupChat implements:
 - **UI**: Chainlit (Conversational interface)
 - **LLM**: OpenAI GPT-4 / DeepSeek
 - **Database**: PostgreSQL + Prisma ORM
-- **Tracking**: MLflow (experiments)
+- **Tracking**: Arize Phoenix (observability & tracing)
 - **APIs**: ChEMBL, OpenTargets, PubMed
 - **Deployment**: Docker + Docker Compose
 
