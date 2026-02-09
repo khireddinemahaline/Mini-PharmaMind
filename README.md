@@ -180,8 +180,8 @@ pharma-core/
 ├── config/                # Configuration files
 │   ├── llm_client.py      # LLM client setup
 │   └── sytem_prompts.py   # System prompts
-├── orcastration/          # Main orchestration 
-│   └── main_chainlit.py   # Chainlit interface 
+├── orcastration/          # Main orchestration
+│   └── main_chainlit.py   # Chainlit interface
 ├── tools/                 # Agent tools and utilities
 ├── utilities/             # Helper functions
 ├── tests/                 # Test suite
@@ -244,15 +244,6 @@ Reviews and improves outputs by:
 - Suggesting improvements
 
 
-### Configuration
-
-Set the following in your `.env`:
-```env
-ARIZE_SPACE_ID=your_arize_space_id
-ARIZE_API_KEY=your_arize_api_key
-```
-
-
 ## 🧪 Testing
 
 Run the test suite:
@@ -310,6 +301,8 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 - **AutoGen** - Multi-agent conversation framework
 - **Chainlit** - Conversational AI interface
 - **Arize Phoenix** - Multi-agent observability and tracing
+- **OpenInference** - OpenTelemetry-based instrumentation for AI systems
+
 ## 📧 Contact
 
 MHLAINE Khireddine - mhalaine.khireddine.chimie@gmail.com

@@ -14,8 +14,8 @@
 #   - No unnecessary build tools in runtime
 #
 # Usage:
-#   docker build -t pharma-mind:latest .
-#   docker run -p 8000:8000 pharma-mind:latest
+#   docker build -t mini-pharmamind:latest .
+#   docker run -p 8000:8000 mini-pharmamind:latest
 # ============================================================================
 
 ##############################################
