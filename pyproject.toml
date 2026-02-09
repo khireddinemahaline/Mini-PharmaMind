@@ -43,7 +43,8 @@ dependencies = [
     "asyncpg==0.30.0",
     "opentelemetry-sdk>=1.24.0",
     "opentelemetry-exporter-otlp-proto-grpc>=1.24.0",
-    "opentelemetry-instrumentation-openai>=0.30.0",
+    "arize-otel>=0.7.0",
+    "openinference-instrumentation-autogen-agentchat>=0.1.0",
 ]
 
 

@@ -131,7 +131,9 @@ Desktop.ini
 secrets/
 credentials/
 OPEN_SOURCE_CHECKLIST.md
+docker-composedb.yaml
+docker-compose_dev.yaml
+analyzeme.md
 
 
 rag.md
-analyzeme.md

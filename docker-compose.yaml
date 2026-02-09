@@ -20,7 +20,10 @@ services:
 
 
   pharma-app:
-    image: pharmamind:0.1.0
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: mini-pharmamind:0.1.0
     container_name: agentic-pharma-app_staging
     restart: unless-stopped
     ports:
@@ -31,6 +34,9 @@ services:
       - CHAINLIT_AUTH_SECRET=${CHAINLIT_AUTH_SECRET}
       - PYTHONUNBUFFERED=1
       - ENVIRONMENT=${ENVIRONMENT}
+      - ARIZE_SPACE_ID=${ARIZE_SPACE_ID}
+      - ARIZE_API_KEY=${ARIZE_API_KEY}
+
     depends_on:
       postgres:
         condition: service_healthy
