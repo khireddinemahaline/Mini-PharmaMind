@@ -20,11 +20,8 @@ services:
 
 
   pharma-app:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    image: mini-pharmamind:0.1.0-mini
-    container_name: mini-pharmamind-app
+    image: pharmamind:0.1.0
+    container_name: agentic-pharma-app_staging
     restart: unless-stopped
     ports:
       - "8000:8000"
@@ -32,7 +29,6 @@ services:
       - DATABASE_URL=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
       - DEEPSEEK_API=${DEEPSEEK_API}
       - CHAINLIT_AUTH_SECRET=${CHAINLIT_AUTH_SECRET}
-      - MLFLOW_ENABLED=false
       - PYTHONUNBUFFERED=1
       - ENVIRONMENT=${ENVIRONMENT}
     depends_on:

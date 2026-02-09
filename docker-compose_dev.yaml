@@ -38,8 +38,8 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    image: mini-pharmamind:0.1.0-mini-dev
-    container_name: mini-pharmamind-app-dev
+    image: mhalainekm/agentic-pharma-app:${VERSION_AGENTIC_PHARMA_APP}
+    container_name: agentic-pharma-app
     restart: unless-stopped
     ports:
       - "8000:8000"

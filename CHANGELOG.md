@@ -16,7 +16,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Report generation agent for creating comprehensive PDF reports
 - Critique agent for quality assurance
 - Chainlit-based conversational interface
-- MLflow integration for experiment tracking
+- Arize Phoenix integration for observability and tracing
 - Session state persistence
 - Real-time streaming responses
 - Docker support for containerized deployment
@@ -36,6 +36,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Batch compound lookups
 
 ## [Unreleased]
+
+### Fixed
+- **Arize tracing: unified trace hierarchy** — replaced `Sampler` (`Decision.DROP`) with a `FilteringSpanProcessor` approach. Dropping spans at the sampler level broke parent-child relationships, causing each agent creation to appear as a separate trace. The new processor-level filtering keeps all spans recorded (preserving OpenTelemetry context propagation) but hides noisy autogen spans from the Arize UI, resulting in a single clean trace per workflow.
 
 ### Mini Version Improvements
 - Improve test coverage (comprehensive testing needed)

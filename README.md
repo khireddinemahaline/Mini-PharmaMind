@@ -17,7 +17,7 @@ An intelligent multi-agent system for pharmaceutical research and drug discovery
 - **Interactive Chat Interface**: User-friendly Chainlit interface for conversational AI
 - **Real-time Streaming**: Stream responses and updates in real-time
 - **Session Management**: Persistent state across conversations
-- **MLflow Integration**: Track experiments and model performance
+- **Arize Phoenix Observability**: Full multi-agent tracing with OpenTelemetry and OpenInference instrumentation
 
 ## ⚠️ Current Limitations (Mini Version)
 
@@ -119,9 +119,10 @@ We're looking for collaborators in:
    
    # Chainlit Configuration
    CHAINLIT_AUTH_SECRET=your_secret_key_here
-   
-   # MLflow Tracking
-   MLFLOW_TRACKING_URI=http://localhost:5000
+
+   # Arize Phoenix Observability
+   ARIZE_SPACE_ID=your_arize_space_id
+   ARIZE_API_KEY=your_arize_api_key
    ```
 
 4. **Install dependencies**
@@ -179,8 +180,8 @@ pharma-core/
 ├── config/                # Configuration files
 │   ├── llm_client.py      # LLM client setup
 │   └── sytem_prompts.py   # System prompts
-├── orcastration/          # Main orchestration
-│   └── main_chainlit.py   # Chainlit interface
+├── orcastration/          # Main orchestration 
+│   └── main_chainlit.py   # Chainlit interface 
 ├── tools/                 # Agent tools and utilities
 ├── utilities/             # Helper functions
 ├── tests/                 # Test suite
@@ -242,16 +243,15 @@ Reviews and improves outputs by:
 - Checking completeness
 - Suggesting improvements
 
-## 📊 MLflow Integration
 
-Track your experiments:
+### Configuration
 
-1. Start MLflow server:
-   ```bash
-   mlflow server --host 0.0.0.0 --port 5000
-   ```
+Set the following in your `.env`:
+```env
+ARIZE_SPACE_ID=your_arize_space_id
+ARIZE_API_KEY=your_arize_api_key
+```
 
-2. Access MLflow UI at `http://localhost:5000`
 
 ## 🧪 Testing
 
@@ -309,7 +309,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 - **OpenTargets** - Target validation platform
 - **AutoGen** - Multi-agent conversation framework
 - **Chainlit** - Conversational AI interface
-- **MLflow** - ML lifecycle management
+- **Arize Phoenix** - Multi-agent observability and tracing
 ## 📧 Contact
 
 MHLAINE Khireddine - mhalaine.khireddine.chimie@gmail.com
