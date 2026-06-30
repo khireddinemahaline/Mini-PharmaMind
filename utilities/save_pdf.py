@@ -40,4 +40,4 @@ def save_pdf(content: str, filename: str, std_path: str = "generated_reports") -
         if temp_file.exists():
             temp_file.unlink()
 
-    return str(pdf_path)
+    return str(pdf_path.resolve())

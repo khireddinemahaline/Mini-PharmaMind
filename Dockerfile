@@ -57,7 +57,7 @@ WORKDIR /app
 # Install only essential runtime dependencies including Node.js for Prisma
 RUN apt-get update && apt-get install -y --no-install-recommends \
     curl ca-certificates dumb-init libpq5 libatomic1 \
-    nodejs npm \
+    nodejs npm texlive-xetex \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
