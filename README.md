@@ -301,7 +301,6 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 - **AutoGen** - Multi-agent conversation framework
 - **Chainlit** - Conversational AI interface
 - **Arize Phoenix** - Multi-agent observability and tracing
-- **OpenInference** - OpenTelemetry-based instrumentation for AI systems
 
 ## 📧 Contact
 
