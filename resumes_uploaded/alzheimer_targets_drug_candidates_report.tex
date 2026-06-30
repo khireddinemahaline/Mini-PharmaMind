@@ -1,0 +1,325 @@
+\documentclass[11pt, a4paper]{article}
+\usepackage{fontspec}
+\usepackage[a4paper, margin=2.5cm]{geometry}
+\usepackage{booktabs}
+\usepackage{longtable}
+\usepackage{hyperref}
+\usepackage{xcolor}
+\usepackage{titlesec}
+\usepackage{parskip}
+\usepackage{setspace}
+
+\title{Therapeutic Targets and Drug Candidates for Alzheimer's Disease}
+\author{PharmaMind Agentic Research System}
+\date{\today}
+
+\hypersetup{
+    colorlinks=true,
+    linkcolor=blue,
+    urlcolor=blue,
+    citecolor=blue
+}
+
+\begin{document}
+\maketitle
+\tableofcontents
+\newpage
+
+\section{User Request}
+\label{sec:request}
+
+\textbf{Query:} Search for therapeutic targets associated with Alzheimer's disease and identify potential drug candidates that could modulate these targets.
+
+\textbf{Disease of Interest:} Alzheimer's disease (MONDO:0004975)
+
+\textbf{Scope:} Literature review of recent mechanistic findings, identification of molecular targets, and compilation of drug candidates currently in clinical development (Phase 1 through Phase 3).
+
+\section{Abstract}
+\label{sec:abstract}
+
+Alzheimer's disease (AD) is a multifactorial, progressive neurodegenerative disorder with complex pathophysiology involving amyloid-beta (A$\beta$) deposition, tau hyperphosphorylation, neuroinflammation, oxidative stress, metal dyshomeostasis, and impaired autophagy. Recent research has positioned neuroinflammation as a central driver of disease progression. This report synthesizes findings from recent literature (2025--2026) and active clinical trials to identify key therapeutic targets and drug candidates. Clinically actionable immune pathways include TREM2 signaling, NLRP3 inflammasome activation, and complement cascade dysregulation. Drug candidates span multiple modalities: anti-amyloid monoclonal antibodies (donanemab, remternetug), the amyloid aggregation inhibitor ALZ-801, the GLP-1 receptor agonist semaglutide, the muscarinic agonist KarXT (xanomeline--trospium), the repurposed uricosuric agent benzbromarone, and novel melatonin nanocarrier systems. Additional subtype-specific metabolic targets (ALDH18A1, SLC6A12) have been identified via metabolic network modeling.
+
+\section{Disease Analysis}
+\label{sec:disease}
+
+\subsection{Overview of Alzheimer's Disease Pathology}
+
+Alzheimer's disease is characterized by the progressive accumulation of amyloid-beta (A$\beta$) plaques and hyperphosphorylated tau neurofibrillary tangles, accompanied by synaptic dysfunction, neuronal loss, and cognitive decline. The disease follows a lengthy preclinical phase before manifesting as mild cognitive impairment (MCI) and eventual dementia.
+
+\subsection{Neuroinflammation as a Central Driver}
+
+Recent evidence positions neuroinflammation not merely as a secondary response but as a central driver of disease progression (Li et al., 2026). Key inflammatory mechanisms include:
+
+\begin{itemize}
+    \item \textbf{TREM2 signaling:} Triggering receptor expressed on myeloid cells 2 (TREM2) regulates microglial activation and phagocytic function.
+    \item \textbf{NLRP3 inflammasome activation:} A key mediator of IL-1$\beta$ and IL-18 release, contributing to chronic neuroinflammation.
+    \item \textbf{Complement cascade dysregulation:} Overactivation of complement proteins contributes to synaptic pruning and neuronal damage.
+\end{itemize}
+
+These pathways are most clinically actionable during the prodromal and early symptomatic stages of AD, when neuroinflammatory responses remain partially adaptive.
+
+\subsection{Metabolic Dysregulation in AD Subtypes}
+
+Luleci et al. (2026) identified aberrant metabolic patterns across five distinct molecular subtypes of AD. Key findings include:
+
+\begin{itemize}
+    \item \textbf{Common dysregulation:} Fatty acid metabolism was dysregulated across all subtypes.
+    \item \textbf{Subtype-specific pathways:} Inositol phosphate metabolism and nucleotide metabolism were among subtype-specific perturbed pathways.
+    \item \textbf{Candidate metabolite biomarkers:} Upregulated secretion of pregnenolone and N-acetylneuraminate.
+    \item \textbf{Predicted drug targets:} ALDH18A1 and SLC6A12 were identified as subtype-specific candidate drug targets.
+\end{itemize}
+
+\subsection{Stage-Dependent Therapeutic Windows}
+
+Emerging data suggest that modulation of innate immune pathways is most likely to confer benefit during prodromal and early symptomatic stages. Biomarker-guided patient selection and disease-stage stratification are increasingly recognized as essential for therapeutic success.
+
+\section{Target Analysis}
+\label{sec:targets}
+
+\subsection{Clinically Actionable Targets Identified from Literature}
+
+Based on the review by Li et al. (2026), the following molecular targets are identified as clinically actionable in AD:
+
+\begin{longtable}{p{4cm} p{4cm} p{6cm}}
+\toprule
+\textbf{Target} & \textbf{Pathway} & \textbf{Rationale} \\
+\midrule
+\endfirsthead
+\toprule
+\textbf{Target} & \textbf{Pathway} & \textbf{Rationale} \\
+\midrule
+\endhead
+\bottomrule
+\endfoot
+TREM2 & Microglial activation & Genetic variants increase AD risk; modulates amyloid clearance and neuroinflammation \\
+NLRP3 Inflammasome & Innate immunity & Drives IL-1$\beta$ secretion; linked to A$\beta$-induced microglial activation \\
+Complement proteins (C1q, C3, C5) & Complement cascade & Overactivation leads to aberrant synaptic pruning \\
+Amyloid-beta (A$\beta$) & Protein aggregation & Central to plaque formation; target of approved monoclonal antibodies \\
+Tau (MAPT) & Neurofibrillary tangles & Hyperphosphorylation causes neurotoxicity and synaptic loss \\
+\bottomrule
+\end{longtable}
+
+\subsection{Metabolic Targets from Subtype Analysis}
+
+Luleci et al. (2026) identified via genome-scale metabolic network modeling:
+
+\begin{itemize}
+    \item \textbf{ALDH18A1:} Aldehyde dehydrogenase 18 family member A1; involved in proline biosynthesis and glutamate metabolism; predicted as subtype-specific drug target.
+    \item \textbf{SLC6A12:} Solute carrier family 6 member 12; a betaine/GABA transporter; identified as subtype-specific drug target.
+    \item \textbf{Fatty acid metabolism enzymes:} Dysregulated across all subtypes, representing a universal metabolic vulnerability.
+\end{itemize}
+
+\subsection{Posttranscriptional Regulatory Mechanisms}
+
+Sakagami et al. (2026) demonstrated that benzbromarone reduces A$\beta$ protein expression in SH-SY5Y cells in a dose-dependent manner, even following transcriptional blockade, suggesting a posttranscriptional regulatory mechanism that represents a novel targetable pathway.
+
+\section{Drug Candidates}
+\label{sec:drugs}
+
+\subsection{Anti-Amyloid Monoclonal Antibodies}
+
+\subsubsection{Donanemab (LY3002813)}
+\begin{itemize}
+    \item \textbf{Developer:} Eli Lilly and Company
+    \item \textbf{Mechanism:} Anti-A$\beta$ (pyroglutamate-modified) monoclonal antibody targeting amyloid plaques
+    \item \textbf{Clinical Status:} Multiple Phase 3 trials
+    \item \textbf{Key Trials:}
+    \begin{itemize}
+        \item NCT04437511 (TRAILBLAZER-ALZ 2) -- Early symptomatic AD, N=1736, ACTIVE NOT RECRUITING
+        \item NCT05738486 (TRAILBLAZER-ALZ 6) -- Dosing regimens, N=1175, ACTIVE NOT RECRUITING
+        \item NCT05026866 (TRAILBLAZER-ALZ 3) -- Preclinical AD, N=2996, ACTIVE NOT RECRUITING
+        \item NCT07571161 -- Chinese participants with preclinical AD, N=140, NOT YET RECRUITING
+        \item NCT06996730 -- PSEN1 E280A mutation carriers (autosomal-dominant AD), Phase 2/3, N=240, NOT YET RECRUITING
+    \end{itemize}
+\end{itemize}
+
+\subsubsection{Remternetug (LY3372993)}
+\begin{itemize}
+    \item \textbf{Developer:} Eli Lilly and Company
+    \item \textbf{Mechanism:} Anti-amyloid monoclonal antibody
+    \item \textbf{Clinical Status:} Phase 3
+    \item \textbf{Key Trials:}
+    \begin{itemize}
+        \item NCT05463731 (TRAILRUNNER-ALZ 1) -- Early symptomatic AD, N=1667, COMPLETED
+        \item NCT06653153 (TRAILRUNNER-ALZ 3) -- Early AD, N=1400, ACTIVE NOT RECRUITING
+    \end{itemize}
+\end{itemize}
+
+\subsection{Amyloid Aggregation Inhibitor}
+
+\subsubsection{ALZ-801 (Tramiprosate prodrug)}
+\begin{itemize}
+    \item \textbf{Developer:} Alzheon Inc.
+    \item \textbf{Mechanism:} Oral small molecule inhibitor of A$\beta$ aggregation; prodrug of tramiprosate (3-aminopropanesulfonic acid, also known as homotaurine)
+    \item \textbf{Clinical Status:} Phase 3 (APOLLOE4 trial completed)
+    \item \textbf{Key Trials:}
+    \begin{itemize}
+        \item NCT04770220 (APOLLOE4) -- Phase 3, APOE4/4 early AD subjects, N=325, COMPLETED
+        \item NCT04693520 -- Phase 2 biomarker study, APOE4 carriers with early AD, N=84, COMPLETED
+        \item NCT04585347 -- Phase 1 PK study, N=12, COMPLETED
+    \end{itemize}
+\end{itemize}
+
+\subsection{Muscarinic Agonist}
+
+\subsubsection{KarXT (Xanomeline--Trospium)}
+\begin{itemize}
+    \item \textbf{Developer:} Bristol-Myers Squibb (formerly Karuna Therapeutics)
+    \item \textbf{Mechanism:} Xanomeline (M1/M4-preferring muscarinic acetylcholine receptor agonist) combined with trospium (peripheral muscarinic antagonist to reduce side effects)
+    \item \textbf{Clinical Status:} Multiple Phase 3 trials for various AD indications
+    \item \textbf{Key Trials:}
+    \begin{itemize}
+        \item NCT07011732 (ADAGIO-1) -- Agitation in AD, N=352, RECRUITING
+        \item NCT07011745 (ADAGIO-2) -- Agitation in AD, N=352, RECRUITING
+        \item NCT06937229 (ADAGIO-3) -- Long-term safety for agitation, N=600, RECRUITING
+        \item NCT06585787 (ADEPT-4) -- Psychosis in AD, N=406, RECRUITING
+        \item NCT06976203 (MINDSET 2) -- Cognitive impairment in mild-to-moderate AD, N=586, RECRUITING
+    \end{itemize}
+\end{itemize}
+
+\subsection{GLP-1 Receptor Agonist}
+
+\subsubsection{Semaglutide}
+\begin{itemize}
+    \item \textbf{Developer:} Novo Nordisk A/S
+    \item \textbf{Mechanism:} Glucagon-like peptide-1 (GLP-1) receptor agonist; pleiotropic effects including neuroprotection, anti-inflammation, and metabolic modulation
+    \item \textbf{Clinical Status:} Phase 3 (EVOKE completed)
+    \item \textbf{Key Trials:}
+    \begin{itemize}
+        \item NCT04777396 (EVOKE) -- Phase 3, oral semaglutide in early AD, N=1840, COMPLETED
+        \item NCT06072963 (COMMETS) -- Phase 2, intranasal insulin + oral semaglutide in MCI with metabolic syndrome, N=80, RECRUITING
+        \item NCT07651319 -- Phase 1/2, IL-2 + semaglutide in AD, N=30, RECRUITING
+    \end{itemize}
+\end{itemize}
+
+\subsection{Repurposed Drug Candidate}
+
+\subsubsection{Benzbromarone}
+\begin{itemize}
+    \item \textbf{Original Indication:} Uricosuric agent for gout
+    \item \textbf{Evidence:} Sakagami et al. (2026) screened 1,241 approved drugs using a Japanese claims database (n=2,090,465; 2005--2023). Benzbromarone was associated with decreased risk of AD onset (adjusted HR: 0.54, 95\% CI: 0.41--0.71, p $<$ 0.05 post-FDR correction).
+    \item \textbf{Mechanism:} Reduces A$\beta$ protein expression in SH-SY5Y cells via posttranscriptional regulation, in a dose-dependent manner.
+    \item \textbf{Status:} Preclinical validation stage; requires further mechanistic and clinical investigation.
+\end{itemize}
+
+\subsection{Novel Delivery Systems}
+
+\subsubsection{Melatonin Nanocarriers}
+\begin{itemize}
+    \item \textbf{Rationale:} Melatonin has antioxidant, anti-inflammatory, and neuroprotective properties but suffers from poor bioavailability and limited brain penetration.
+    \item \textbf{Approach:} Nanotechnology-based delivery systems (liposomes, polymeric nanoparticles, solid lipid nanoparticles) designed to overcome the blood-brain barrier and improve therapeutic outcomes.
+    \item \textbf{Evidence:} Demonstrated in preclinical models of AD, Parkinson's disease, myocardial infarction, and other conditions (Yang et al., 2026).
+    \item \textbf{Status:} Preclinical; challenges remain in large-scale manufacturing and long-term toxicity evaluation.
+\end{itemize}
+
+\subsection{Genetic Mutation-Targeted Trial}
+
+\subsubsection{DIAN-TU Platform Trial (NCT05552157)}
+\begin{itemize}
+    \item \textbf{Lead:} Washington University School of Medicine
+    \item \textbf{Design:} Phase 2/3 platform trial for autosomal-dominant AD (PSEN1, PSEN2, APP mutation carriers)
+    \item \textbf{Population:} Individuals at risk for or with early-onset AD caused by genetic mutations, N=280
+    \item \textbf{Status:} RECRUITING
+\end{itemize}
+
+\section{Summary of Clinical Trial Landscape}
+\label{sec:trials}
+
+The following table summarizes the major Phase 2/3 drug candidates identified:
+
+\begin{longtable}{p{3cm} p{2.5cm} p{2.5cm} p{2.5cm} p{3cm}}
+\toprule
+\textbf{Drug} & \textbf{Mechanism} & \textbf{Highest Phase} & \textbf{Sponsor} & \textbf{Indication} \\
+\midrule
+\endfirsthead
+\toprule
+\textbf{Drug} & \textbf{Mechanism} & \textbf{Highest Phase} & \textbf{Sponsor} & \textbf{Indication} \\
+\midrule
+\endhead
+\bottomrule
+\endfoot
+Donanemab & Anti-A$\beta$ mAb & Phase 3 & Eli Lilly & Early symptomatic to preclinical AD \\
+Remternetug & Anti-amyloid mAb & Phase 3 & Eli Lilly & Early AD \\
+ALZ-801 & A$\beta$ aggregation inhibitor & Phase 3 & Alzheon Inc. & APOE4/4 early AD \\
+KarXT & Muscarinic agonist & Phase 3 & Bristol-Myers Squibb & Agitation, psychosis, cognition in AD \\
+Semaglutide & GLP-1 receptor agonist & Phase 3 & Novo Nordisk & Early AD \\
+Benzbromarone & Uricosuric (repurposed) & Preclinical & N/A & AD risk reduction \\
+\bottomrule
+\end{longtable}
+
+\section{Methodology}
+\label{sec:methods}
+
+The findings in this report were compiled through the following process:
+
+\begin{enumerate}
+    \item \textbf{Disease Identification:} The user query was matched to Alzheimer's disease (MONDO:0004975) via ontology-based search.
+    \item \textbf{Literature Search:} Recent publications (2025--2026) were retrieved from PubMed, focusing on:
+    \begin{itemize}
+        \item Neuroinflammation-centered pathophysiology and therapeutic strategies (Li et al., 2026)
+        \item Metabolic pathway perturbations and subtype-specific targets (Luleci et al., 2026)
+        \item Drug repositioning using real-world data (Sakagami et al., 2026)
+        \item Advanced drug delivery systems (Yang et al., 2026)
+    \end{itemize}
+    \item \textbf{Clinical Trials Search:} Active and completed clinical trials were identified from ClinicalTrials.gov for:
+    \begin{itemize}
+        \item Anti-amyloid antibodies: donanemab, remternetug
+        \item Amyloid aggregation inhibitor: ALZ-801
+        \item Muscarinic agonist: KarXT (xanomeline--trospium)
+        \item GLP-1 receptor agonist: semaglutide
+        \item Genetic mutation-targeted trials: DIAN-TU platform
+    \end{itemize}
+    \item \textbf{Synthesis:} Findings were organized by target category and drug candidate, with explicit citation of source literature and trial identifiers.
+\end{enumerate}
+
+\section{Evidence Trace}
+\label{sec:trace}
+
+The following table maps each major claim in this report to its source:
+
+\begin{longtable}{p{5cm} p{4cm} p{5cm}}
+\toprule
+\textbf{Claim / Finding} & \textbf{Source Agent} & \textbf{Reference} \\
+\midrule
+\endfirsthead
+\toprule
+\textbf{Claim / Finding} & \textbf{Source Agent} & \textbf{Reference} \\
+\midrule
+\endhead
+\bottomrule
+\endfoot
+Neuroinflammation as central driver; TREM2, NLRP3, complement as actionable targets & Literature Agent & Li et al., 2026 (PMID: 42331203) \\
+Metabolic subtypes; ALDH18A1, SLC6A12 as targets; fatty acid metabolism dysregulation & Literature Agent & Luleci et al., 2026 (PMID: 42313214) \\
+Benzbromarone associated with reduced AD risk (HR 0.54); posttranscriptional A$\beta$ regulation & Literature Agent & Sakagami et al., 2026 (PMID: 42324743) \\
+Melatonin nanocarriers for AD treatment & Literature Agent & Yang et al., 2026 (PMID: 42328129) \\
+Donanemab Phase 3 trials (TRAILBLAZER-ALZ 2, 3, 6) & Clinical Trials Agent & NCT04437511, NCT05026866, NCT05738486, NCT07571161, NCT06996730 \\
+Remternetug Phase 3 trials (TRAILRUNNER-ALZ 1, 3) & Clinical Trials Agent & NCT05463731, NCT06653153 \\
+ALZ-801 Phase 3 APOLLOE4 trial & Clinical Trials Agent & NCT04770220 \\
+KarXT Phase 3 trials (ADAGIO-1/2/3, ADEPT-4, MINDSET 2) & Clinical Trials Agent & NCT07011732, NCT07011745, NCT06937229, NCT06585787, NCT06976203 \\
+Semaglutide Phase 3 EVOKE trial & Clinical Trials Agent & NCT04777396 \\
+DIAN-TU platform trial for autosomal-dominant AD & Clinical Trials Agent & NCT05552157 \\
+\bottomrule
+\end{longtable}
+
+\section{Conclusions}
+\label{sec:conclusions}
+
+The therapeutic landscape for Alzheimer's disease is rapidly evolving, with diversification across multiple mechanisms of action:
+
+\begin{enumerate}
+    \item \textbf{Anti-amyloid antibodies} (donanemab, remternetug) remain the most advanced disease-modifying approach, with multiple ongoing Phase 3 trials spanning preclinical to early symptomatic stages. Recent FDA approvals of aducanumab and lecanemab have validated this class, though long-term clinical impact and safety (particularly ARIA) remain under evaluation.
+
+    \item \textbf{Neuroinflammation-targeted strategies} represent a paradigm shift, with TREM2, NLRP3, and complement pathways emerging as clinically actionable targets. These may be most effective during early disease stages when neuroinflammatory responses remain adaptive.
+
+    \item \textbf{Metabolic precision medicine} is advancing through subtype-specific targeting (ALDH18A1, SLC6A12) guided by genome-scale metabolic modeling, enabling personalized approaches based on molecular AD subtypes.
+
+    \item \textbf{Drug repurposing} offers accelerated paths to clinic: benzbromarone (a uricosuric agent) demonstrated a 46\% reduced risk of AD onset in real-world data and confirmed A$\beta$-lowering in vitro via a posttranscriptional mechanism.
+
+    \item \textbf{Multi-target approaches} are increasingly favored, combining amyloid modulation, tau-directed interventions, and attenuation of maladaptive neuroinflammatory responses, potentially integrated with GLP-1 receptor agonism (semaglutide) or cholinergic modulation (KarXT).
+
+    \item \textbf{Biomarker-guided patient stratification} and disease-stage-specific therapeutic windows are critical for successful clinical development, as underscored by the DIAN-TU platform trial design for genetic forms of AD.
+\end{enumerate}
+
+Future directions should prioritize: (a) validation of subtype-specific metabolic targets in clinical cohorts, (b) mechanistic elucidation of benzbromarone's A$\beta$-regulatory pathway, (c) long-term safety monitoring of anti-amyloid antibodies, and (d) development of blood-based biomarkers for early detection and therapeutic monitoring.
+
+\end{document}
