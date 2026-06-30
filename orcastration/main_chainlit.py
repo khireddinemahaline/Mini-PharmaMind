@@ -732,14 +732,22 @@ async def handle_message(message: cl.Message) -> None:
 
                 if pdf_files:
                     latest_pdf = max(pdf_files, key=lambda p: p.stat().st_mtime_ns)
+                    pdf_bytes = latest_pdf.read_bytes()
 
                     # Create downloadable file element
                     elements = [
                         cl.Pdf(
                             name=latest_pdf.name,
-                            path=str(latest_pdf.resolve()),
+                            content=pdf_bytes,
                             display="inline",
-                        )
+                            mime="application/pdf",
+                        ),
+                        cl.File(
+                            name=latest_pdf.name,
+                            content=pdf_bytes,
+                            mime="application/pdf",
+                            display="inline",
+                        ),
                     ]
 
                     await cl.Message(
