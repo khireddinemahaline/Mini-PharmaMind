@@ -735,9 +735,9 @@ async def handle_message(message: cl.Message) -> None:
 
                     # Create downloadable file element
                     elements = [
-                        cl.File(
+                        cl.Pdf(
                             name=latest_pdf.name,
-                            path=str(latest_pdf),
+                            path=str(latest_pdf.resolve()),
                             display="inline",
                         )
                     ]
