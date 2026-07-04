@@ -31,8 +31,8 @@ def save_pdf(content: str, filename: str, std_path: str = "generated_reports") -
             str(tex_path),
         ],
         check=True,
-        stdout=subprocess.DEVNULL,
-        stderr=subprocess.DEVNULL,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
     )
 
     for suffix in (".aux", ".log", ".out", ".toc"):
