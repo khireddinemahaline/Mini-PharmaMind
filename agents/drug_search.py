@@ -14,12 +14,13 @@ Example:
     # Use the agent in your drug discovery workflow
 """
 
+
 from autogen_agentchat.agents import AssistantAgent
-from autogen_ext.tools.mcp import StreamableHttpServerParams, mcp_server_tools
+from autogen_ext.tools.mcp import StreamableHttpServerParams, mcp_server_tools, StdioServerParams
 from config.llm_client import model_client
 from config.sytem_prompts import SYSTEM_PROMPTS_DRUG_SEARCH
 
-CHEMBL_MCP_URL = "https://clinicaltrials.caseyjhand.com/mcp"
+clinicaltrials_MCP_URL = "https://clinicaltrials.caseyjhand.com/mcp"
 
 
 
@@ -56,24 +57,44 @@ async def setup_drug_search_agent() -> AssistantAgent:
         This is an async function and must be awaited when called.
         The agent has a maximum of 3 tool iterations to prevent excessive API calls.
     """
-    chembl_server = StreamableHttpServerParams(
-        url=CHEMBL_MCP_URL,
-        headers={"Accept": "application/json, text/event-stream"},
-    )
+    chembl_server = StdioServerParams(
+    command="node",
+    args=[
+        "/home/ubuntu/Documents/Agentic/pharmaMind/MCP-serveres/ChEMBL-MCP-Server/build/index.js",
+    ],
+)
     chembl_tools = await mcp_server_tools(chembl_server)
 
+   ## pubchem_server = StdioServerParams(
+    ##command="node",
+    ##args=["/home/ubuntu/Documents/Agentic/pharmaMind/MCP-serveres/PubChem-MCP-Server-main/build/index.js"],
+    ##env={},
+##)
+
+    #pubchem_tools = await mcp_server_tools(pubchem_server)
+
+
+
+    clinicaltrials_server = StreamableHttpServerParams(
+        url=clinicaltrials_MCP_URL,
+        headers={"Accept": "application/json, text/event-stream"},
+    )
+    clinicaltrials_tools = await mcp_server_tools(clinicaltrials_server)
+
+    
 
     return AssistantAgent(
         name="DrugSearch",
         description=(
-            "A specialized biomedical research agent focused on drug discovery. "
-            "It identifies potential small-molecule candidates for specific protein "
-            "targets or diseases, retrieves relevant compound data, and analyzes "
-            "their properties via the ChEMBL MCP endpoint."
+            "A specialized biomedical research agent focused on discovering and analyzing "
+    "drug candidates. It searches for approved drugs, investigational compounds, "
+    "and small molecules relevant to the user's request by leveraging mcp tools"
+     "identifies promising drug candidates, and provides structured results to "
+    "support downstream scientific analysis and decision-making."
         ),
         model_client=model_client,
         system_message=SYSTEM_PROMPTS_DRUG_SEARCH,
-        tools=chembl_tools,
+        tools=[*clinicaltrials_tools, *chembl_tools],
         model_client_stream=True,
         max_tool_iterations=3,
     )

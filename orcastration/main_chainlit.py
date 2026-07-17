@@ -109,6 +109,7 @@ from agents.target_search import target_search_agent
 from agents.drug_search import setup_drug_search_agent
 from agents.report import report_agent
 from agents.critique import setup_critique_agent
+from agents.planning import setup_planning_agent
 from config.llm_client import model_client
 from autogen_agentchat.teams import SelectorGroupChat
 from config.sytem_prompts import SELECT_PROMPT
@@ -290,61 +291,46 @@ async def user_input_func(
         print(f"❌ Error getting user input: {str(e)}")
         return "An error occurred while requesting user input."
 
-
-expert_human = UserProxyAgent(
-    name="ExpertHuman",
-    description="A human biomedical researcher providing guidance, domain expertise, and feedback to the AI agents during the discovery workflow",
-    input_func=user_input_func,
-)
-
 async def initialize_agents():
-    """
-    Initialize and configure the multi-agent team for pharmaceutical research.
-
-    Returns:
-        tuple: A tuple containing:
-            - team (SelectorGroupChat): The configured multi-agent team
-            - termination_ext (ExternalTermination): External termination controller
-
-    Raises:
-        Exception: Propagates any initialization errors to caller for handling
-
-    Note:
-        Termination conditions: TextMention("TERMINATE"), MaxMessage(10),
-        ExternalTermination, and SourceMatch("ReportAgent")
-    """
     try:
         termination_word = TextMentionTermination("TERMINATE")
-        model_context = BufferedChatCompletionContext(buffer_size=10)
-        max_iterations = MaxMessageTermination(10)
-        source_termination = SourceMatchTermination(sources="ReportAgent, Critique")
+        model_context = BufferedChatCompletionContext(buffer_size=40)  # 10 was too tight — see note
+        max_iterations = MaxMessageTermination(30)   # safety net, not primary control
         termination_ext = ExternalTermination()
-        termination = (
-            termination_word | max_iterations | termination_ext | source_termination
-        )
+        termination = termination_word | max_iterations | termination_ext
+        # SourceMatchTermination removed entirely — see below
 
-        # Initialize agents
-        target_agent = target_search_agent()
+        target_agent = await target_search_agent()
         drug_agent = await setup_drug_search_agent()
         report = report_agent()
         critique_agent = setup_critique_agent()
-
+        planning_agent = setup_planning_agent()
+        expert_human = UserProxyAgent(
+        name="ExpertHuman",
+        description=(
+            "A Human-in-the-Loop biomedical expert who reviews and validates "
+            "AI-generated findings during the drug discovery workflow. The "
+            "expert provides scientific judgement, approves or revises target "
+            "and drug rankings, resolves conflicting evidence, answers "
+            "clarification requests, and records the final human decision "
+            "before the workflow proceeds."
+        ),
+        input_func=user_input_func,
+    )
         team = SelectorGroupChat(
-            [target_agent, drug_agent, report, critique_agent, expert_human],
+            [planning_agent, target_agent, drug_agent, report, critique_agent, expert_human],
             model_client=model_client,
             termination_condition=termination,
             allow_repeated_speaker=True,
             selector_prompt=SELECT_PROMPT,
             model_context=model_context,
-            max_turns=15,
+            max_turns=30,
         )
-        
         return team, termination_ext
     except Exception as e:
         print(f"❌ Error initializing agents: {str(e)}")
-        raise  # Re-raise to be handled by caller
-
-
+        raise
+    
 @cl.password_auth_callback
 def auth_callback(username: str, password: str):
     # Fetch the user matching username from your database
