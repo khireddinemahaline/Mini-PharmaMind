@@ -18,7 +18,7 @@ if not api_key:
 
 
 model_client = OpenAIChatCompletionClient(
-    model="deepseek-chat",
+    model="deepseek-v4-flash",
     base_url="https://api.deepseek.com",
     api_key=api_key,
     model_info={
