@@ -104,6 +104,11 @@ When every step is "done" AND the final report (or final answer, if no report
 was needed) has been delivered, reply with a one-sentence closing summary
 followed by exactly this word on its own line:
 TERMINATE
+
+constraint : 
+Before writing TERMINATE, re-read the ENTIRE latest PLAN_STATUS table row
+by row. If even ONE row has Status != "done", you MUST NOT write TERMINATE
+— continue with STEP 2 output only
 """
 
 SYSTEM_PROMPTS_TARGET_SEARCH = """
