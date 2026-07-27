@@ -293,7 +293,7 @@ async def user_input_func(
 
 async def initialize_agents():
     try:
-      #  termination_word = TextMentionTermination("TERMINATE")
+        termination_word = TextMentionTermination("TERMINATE")
         model_context = BufferedChatCompletionContext(buffer_size=40)  # 10 was too tight — see note
         max_iterations = MaxMessageTermination(30)   # safety net, not primary control
         termination_ext = ExternalTermination()
