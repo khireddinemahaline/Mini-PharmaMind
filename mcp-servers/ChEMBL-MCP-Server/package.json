@@ -1,0 +1,55 @@
+{
+  "name": "chembl-server",
+  "version": "1.0.0",
+  "description": "A comprehensive Model Context Protocol server for accessing ChEMBL chemical database with 27 specialized tools for drug discovery, chemical informatics, and bioactivity analysis",
+  "main": "build/index.js",
+  "type": "module",
+  "scripts": {
+    "build": "tsc && node -e \"require('fs').chmodSync('build/index.js', '755')\"",
+    "start": "node build/index.js",
+    "dev": "tsc --watch"
+  },
+  "keywords": [
+    "mcp",
+    "model-context-protocol",
+    "chembl",
+    "drug-discovery",
+    "chemical-informatics",
+    "bioactivity",
+    "compounds",
+    "targets",
+    "assays",
+    "pharmaceutical",
+    "medicinal-chemistry",
+    "admet",
+    "molecular-descriptors",
+    "similarity-search",
+    "substructure-search",
+    "clinical-trials",
+    "mechanism-of-action",
+    "drug-development",
+    "chemical-biology",
+    "cheminformatics"
+  ],
+  "author": "Augmented Nature",
+  "license": "MIT",
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^0.5.0",
+    "axios": "^1.6.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "typescript": "^5.0.0"
+  },
+  "bin": {
+    "chembl-server": "./build/index.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/augmented-nature/chembl-mcp-server"
+  },
+  "homepage": "https://github.com/augmented-nature/chembl-mcp-server#readme",
+  "bugs": {
+    "url": "https://github.com/augmented-nature/chembl-mcp-server/issues"
+  }
+}

@@ -881,4 +881,3 @@ async def setup_agent_settings(settings):
             content=f"⚠️ **Settings update failed**\n\nPlease try again.",
             author="System",
         ).send()
-

@@ -22,6 +22,7 @@ from autogen_ext.tools.mcp import StdioServerParams, mcp_server_tools
 
 from config.llm_client import model_client
 from config.sytem_prompts import SYSTEM_PROMPTS_TARGET_SEARCH
+from pathlib import Path
 
 
 async def target_search_agent() -> AssistantAgent:
@@ -51,10 +52,11 @@ async def target_search_agent() -> AssistantAgent:
         >>> # Agent is now ready to process therapeutic target discovery tasks
     """
 
+    project_root = Path(__file__).resolve().parent.parent
     opentarget_server = StdioServerParams(
         command="node",
         args=[
-            "/home/ubuntu/Documents/Agentic/pharmaMind/MCP-serveres/OpenTargets-MCP-Server-main/build/index.js",
+            str(project_root / "mcp-servers" / "OpenTargets-MCP-Server-main" / "build" / "index.js"),
         ],
     )
 

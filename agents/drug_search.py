@@ -19,6 +19,7 @@ from autogen_agentchat.agents import AssistantAgent
 from autogen_ext.tools.mcp import StreamableHttpServerParams, mcp_server_tools, StdioServerParams
 from config.llm_client import model_client
 from config.sytem_prompts import SYSTEM_PROMPTS_DRUG_SEARCH
+from pathlib import Path
 
 clinicaltrials_MCP_URL = "https://clinicaltrials.caseyjhand.com/mcp"
 
@@ -57,12 +58,13 @@ async def setup_drug_search_agent() -> AssistantAgent:
         This is an async function and must be awaited when called.
         The agent has a maximum of 3 tool iterations to prevent excessive API calls.
     """
+    project_root = Path(__file__).resolve().parent.parent
     chembl_server = StdioServerParams(
-    command="node",
-    args=[
-        "/home/ubuntu/Documents/Agentic/pharmaMind/MCP-serveres/ChEMBL-MCP-Server/build/index.js",
-    ],
-)
+        command="node",
+        args=[
+            str(project_root / "mcp-servers" / "ChEMBL-MCP-Server" / "build" / "index.js"),
+        ],
+    )
     chembl_tools = await mcp_server_tools(chembl_server)
 
    ## pubchem_server = StdioServerParams(
