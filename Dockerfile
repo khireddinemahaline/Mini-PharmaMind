@@ -27,18 +27,23 @@ WORKDIR /app
 
 # Install build dependencies
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    gcc g++ curl ca-certificates libpq-dev \
+    gcc g++ curl ca-certificates libpq-dev nodejs npm \
     && rm -rf /var/lib/apt/lists/*
 
 # Install uv package manager
 RUN curl -LsSf https://astral.sh/uv/install.sh | sh
 
-# Copy dependency files only
+# Copy dependency files and MCP server sources
 COPY pyproject.toml uv.lock ./
+COPY mcp-servers ./mcp-servers
 
 # Create virtual environment and install dependencies (no cache)
 RUN /root/.local/bin/uv venv /app/.venv && \
     /root/.local/bin/uv pip install --python /app/.venv/bin/python -r pyproject.toml --no-cache
+
+# Build MCP servers so runtime has a ready-to-launch server binary
+RUN cd /app/mcp-servers/ChEMBL-MCP-Server && npm install && npm run build && \
+    cd /app/mcp-servers/OpenTargets-MCP-Server-main && npm install && npm run build
 
 ##############################################
 # Stage 2: Runtime stage
@@ -57,7 +62,7 @@ WORKDIR /app
 # Install only essential runtime dependencies including Node.js for Prisma
 RUN apt-get update && apt-get install -y --no-install-recommends \
     curl ca-certificates dumb-init libpq5 libatomic1 \
-    nodejs npm texlive-xetex texlive-latex-extra texlive-fonts-recommended \
+    nodejs npm \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
@@ -67,6 +72,7 @@ RUN groupadd -r pharma --gid=1000 && \
 
 # Copy Python environment from builder stage
 COPY --from=builder --chown=pharma:pharma /app/.venv /app/.venv
+COPY --from=builder --chown=pharma:pharma /app/mcp-servers ./mcp-servers
 
 # Copy only necessary application files (exclude tests, docs, etc.)
 COPY --chown=pharma:pharma agents ./agents
