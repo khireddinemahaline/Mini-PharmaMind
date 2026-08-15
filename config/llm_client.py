@@ -21,10 +21,11 @@ model_client = OpenAIChatCompletionClient(
         "json_output": False,
         "structured_output": False,
     },
+    reasoning_effort="none",
     extra_body={
         "thinking": {"type": "disabled"}
     },
-    parallel_tool_calls=True,
+    parallel_tool_calls=False,
     max_retries=10,
     timeout=200,
 )

@@ -1,62 +1,47 @@
-# syntax=docker/dockerfile:1
-##############################################
-# ChEMBL MCP Server Dockerfile
-# This Dockerfile builds a Node.js MCP server for ChEMBL
+# Use Node.js LTS (Alpine for smaller image size)
+FROM node:18-alpine
 
-
-##############################################
-# Stage 1: Build (with devDependencies)
-##############################################
-FROM node:22-alpine AS builder
-
+# Set working directory
 WORKDIR /app
 
-# Copy package files and TypeScript config
-COPY package*.json tsconfig.json ./
-
-# Install all dependencies including dev
-RUN npm ci
-
-# Copy the rest of the source code
-COPY src/ ./src/
-
-# Build TypeScript project
-RUN npm run build
-
-##############################################
-# Stage 2: Runtime (production only)
-##############################################
-FROM node:22-alpine
-
-WORKDIR /app
-
-# Copy only package files to install prod deps
+# Copy package files first for better caching
 COPY package*.json ./
+COPY tsconfig.json ./
+
+# Install dependencies
 RUN npm ci --only=production
 
-# Copy built JS from builder stage
-COPY --from=builder /app/build ./build
+# Copy source code
+COPY src/ ./src/
 
-# Security: create non-root user
+# Build the project
+RUN npm run build
+
+# Remove dev dependencies and source code to reduce image size
+RUN npm prune --production && rm -rf src/ tsconfig.json
+
+# Create non-root user for security
 RUN addgroup -g 1001 -S mcpuser && \
     adduser -S mcpuser -u 1001
+
+# Change ownership of the app directory to the non-root user
 RUN chown -R mcpuser:mcpuser /app
 USER mcpuser
 
-# Expose port (optional, MCP usually uses stdio)
+# Expose port (though MCP servers typically use stdio)
 EXPOSE 3000
 
-# Healthcheck for container orchestration
+# Set the entrypoint to the built server
+ENTRYPOINT ["node", "build/index.js"]
+
+# Add health check
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
     CMD node -e "console.log('ChEMBL MCP Server is healthy')" || exit 1
 
-# Metadata labels
+# Add labels for metadata
 LABEL maintainer="Augmented Nature <contact@augmentednature.ai>"
 LABEL description="ChEMBL Model Context Protocol Server"
 LABEL version="1.0.0"
 LABEL org.opencontainers.image.source="https://github.com/augmented-nature/chembl-mcp-server"
 LABEL org.opencontainers.image.description="A comprehensive MCP server for ChEMBL chemical database access"
 LABEL org.opencontainers.image.licenses="MIT"
-
-# Start the compiled Node server
-ENTRYPOINT ["node", "build/index.js"]

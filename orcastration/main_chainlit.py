@@ -46,50 +46,11 @@ from arize.otel import (
     Transport
 )
 
+# Ensure project root is on sys.path so package imports like `orcastration` resolve
+project_root = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(project_root))
 
-from openinference.instrumentation.autogen_agentchat import AutogenAgentChatInstrumentor
-from opentelemetry.sdk.resources import Resource
-
-# 1. Define the Sampler to kill the "autogen create" noise
-class AutoGenNoiseSampler(Sampler):
-    def should_sample(self, parent_context, trace_id, name, kind=None, attributes=None, links=None):
-        # Drop the specific noisy span you identified
-        if name.startswith("autogen"):
-            return SamplingResult(Decision.DROP)
-        
-        # Keep everything else (LLM calls, etc.)
-        return SamplingResult(Decision.RECORD_AND_SAMPLE)
-
-    def get_description(self):
-        return "AutoGenNoiseSampler"
-
-# 2. Manually setup the Provider using Arize-aware classes
-# This mimics what register() does but adds the Sampler
-ARIZE_SPACE_ID = os.getenv("ARIZE_SPACE_ID")
-ARIZE_API_KEY = os.getenv("ARIZE_API_KEY")
-
-if not ARIZE_SPACE_ID or not ARIZE_API_KEY:
-    raise ValueError("ARIZE_SPACE_ID and ARIZE_API_KEY must be set in the .env file")
-
-exporter = GRPCSpanExporter(
-    space_id=ARIZE_SPACE_ID,
-    api_key=ARIZE_API_KEY,
-)
-
-# Initialize provider with your custom sampler
-provider = TracerProvider(
-    space_id=ARIZE_SPACE_ID,
-    api_key=ARIZE_API_KEY,
-    sampler=AutoGenNoiseSampler(),
-    resource=Resource(attributes={"model_id": "pharma-mind", "arize.project.name": "pharma-mind"})
-)
-
-# Add the batch processor to the provider
-provider.add_span_processor(BatchSpanProcessor(exporter))
-
-# 3. Set as global and instrument
-trace.set_tracer_provider(provider)
-AutogenAgentChatInstrumentor().instrument(tracer_provider=provider)
+from orcastration.instrumentation import tracer_provider  # centralized Arize instrumentation
 
 
 
@@ -100,10 +61,7 @@ from chainlit.types import ThreadDict
 from pathlib import Path
 
 
-# Add the project root to Python path for proper module resolution
-project_root = Path(__file__).resolve().parent.parent
-sys.path.insert(0, str(project_root))
-
+# Imports
 # Imports
 from agents.target_search import target_search_agent
 from agents.drug_search import setup_drug_search_agent

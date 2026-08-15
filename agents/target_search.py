@@ -56,7 +56,7 @@ async def target_search_agent() -> AssistantAgent:
     opentarget_server = StdioServerParams(
         command="node",
         args=[
-            str(project_root / "mcp-servers" / "OpenTargets-MCP-Server-main" / "build" / "index.js"),
+            str(project_root / "mcp-servers" / "OpenTargets-MCP-Server" / "build" / "index.js"),
         ],
     )
 
