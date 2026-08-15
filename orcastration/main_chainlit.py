@@ -118,7 +118,7 @@ from autogen_agentchat.conditions import (
     TextMentionTermination,
     SourceMatchTermination,
 )
-from autogen_core.model_context import BufferedChatCompletionContext
+from autogen_core.model_context import UnboundedChatCompletionContext
 from autogen_agentchat.conditions import ExternalTermination
 from autogen_agentchat.base import TaskResult
 from autogen_agentchat.messages import ModelClientStreamingChunkEvent, TextMessage
@@ -291,13 +291,18 @@ async def user_input_func(
         print(f"❌ Error getting user input: {str(e)}")
         return "An error occurred while requesting user input."
 
+
+expert_human = UserProxyAgent(
+    name="ExpertHuman",
+    description="A human biomedical researcher providing guidance, domain expertise, and feedback to the AI agents during the discovery workflow",
+    input_func=user_input_func,
+)
 async def initialize_agents():
     try:
         termination_word = TextMentionTermination("TERMINATE")
-        model_context = BufferedChatCompletionContext(buffer_size=40)  # 10 was too tight — see note
-        max_iterations = MaxMessageTermination(30)   # safety net, not primary control
+        model_context = UnboundedChatCompletionContext()  # 10 was too tight — see note
         termination_ext = ExternalTermination()
-        termination = termination_word | max_iterations | termination_ext
+        termination = termination_word | termination_ext
         # SourceMatchTermination removed entirely — see below
 
         target_agent = await target_search_agent()
@@ -324,13 +329,15 @@ async def initialize_agents():
             allow_repeated_speaker=True,
             selector_prompt=SELECT_PROMPT,
             model_context=model_context,
-            max_turns=30,
+            max_turns=50,
         )
         return team, termination_ext
     except Exception as e:
         print(f"❌ Error initializing agents: {str(e)}")
         raise
     
+
+
 @cl.password_auth_callback
 def auth_callback(username: str, password: str):
     # Fetch the user matching username from your database

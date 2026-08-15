@@ -24,6 +24,7 @@ model_client = OpenAIChatCompletionClient(
     extra_body={
         "thinking": {"type": "disabled"}
     },
+    parallel_tool_calls=False,
     max_retries=10,
     timeout=200,
 )

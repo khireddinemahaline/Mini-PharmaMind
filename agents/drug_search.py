@@ -21,7 +21,7 @@ from config.llm_client import model_client
 from config.sytem_prompts import SYSTEM_PROMPTS_DRUG_SEARCH
 from pathlib import Path
 
-clinicaltrials_MCP_URL = "https://clinicaltrials.caseyjhand.com/mcp"
+#linicaltrials_MCP_URL = "https://clinicaltrials.caseyjhand.com/mcp"
 
 
 
@@ -77,11 +77,11 @@ async def setup_drug_search_agent() -> AssistantAgent:
 
 
 
-    clinicaltrials_server = StreamableHttpServerParams(
-        url=clinicaltrials_MCP_URL,
-        headers={"Accept": "application/json, text/event-stream"},
-    )
-    clinicaltrials_tools = await mcp_server_tools(clinicaltrials_server)
+  #  clinicaltrials_server = StreamableHttpServerParams(
+   #     url=clinicaltrials_MCP_URL,
+    #    headers={"Accept": "application/json, text/event-stream"},
+    #)
+    #clinicaltrials_tools = await mcp_server_tools(clinicaltrials_server)
 
     
 
@@ -96,7 +96,7 @@ async def setup_drug_search_agent() -> AssistantAgent:
         ),
         model_client=model_client,
         system_message=SYSTEM_PROMPTS_DRUG_SEARCH,
-        tools=[*clinicaltrials_tools, *chembl_tools],
+        tools=chembl_tools,
         model_client_stream=True,
         max_tool_iterations=3,
     )
