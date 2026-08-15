@@ -43,7 +43,7 @@ RUN /root/.local/bin/uv venv /app/.venv && \
 
 # Build MCP servers so runtime has a ready-to-launch server binary
 RUN cd /app/mcp-servers/ChEMBL-MCP-Server && npm install && npm run build && \
-    cd /app/mcp-servers/OpenTargets-MCP-Server-main && npm install && npm run build
+    cd /app/mcp-servers/OpenTargets-MCP-Server && npm install && npm run build
 
 ##############################################
 # Stage 2: Runtime stage
