@@ -292,11 +292,7 @@ async def user_input_func(
         return "An error occurred while requesting user input."
 
 
-expert_human = UserProxyAgent(
-    name="ExpertHuman",
-    description="A human biomedical researcher providing guidance, domain expertise, and feedback to the AI agents during the discovery workflow",
-    input_func=user_input_func,
-)
+
 async def initialize_agents():
     try:
         termination_word = TextMentionTermination("TERMINATE")
