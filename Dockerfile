@@ -42,21 +42,10 @@ RUN /root/.local/bin/uv venv /app/.venv && \
     /root/.local/bin/uv pip install --python /app/.venv/bin/python -r pyproject.toml --no-cache
 
 # Build MCP servers so runtime has a ready-to-launch server binary
-# Build each server only if its directory and package.json exist to avoid
-# failing the build when one server is absent in the build context.
-RUN set -e; \
-    if [ -d /app/mcp-servers/ChEMBL-MCP-Server ] && [ -f /app/mcp-servers/ChEMBL-MCP-Server/package.json ]; then \
-        echo "Building ChEMBL-MCP-Server"; \
-        cd /app/mcp-servers/ChEMBL-MCP-Server && npm install && npm run build; \
-    else \
-        echo "Skipping ChEMBL-MCP-Server build (missing folder or package.json)"; \
-    fi; \
-    if [ -d /app/mcp-servers/OpenTargets-MCP-Server ] && [ -f /app/mcp-servers/OpenTargets-MCP-Server/package.json ]; then \
-        echo "Building OpenTargets-MCP-Server"; \
-        cd /app/mcp-servers/OpenTargets-MCP-Server && npm install && npm run build; \
-    else \
-        echo "Skipping OpenTargets-MCP-Server build (missing folder or package.json)"; \
-    fi
+# Build each server in its own step so failures are visible and easier to debug.
+RUN cd /app/mcp-servers/ChEMBL-MCP-Server && npm install && npm run build
+
+RUN cd /app/mcp-servers/OpenTargets-MCP-Server && npm install && npm run build
 
 ##############################################
 # Stage 2: Runtime stage
