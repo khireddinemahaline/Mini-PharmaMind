@@ -27,15 +27,19 @@ WORKDIR /app
 
 # Install build dependencies
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    gcc g++ curl ca-certificates libpq-dev nodejs npm \
+    git gcc g++ curl ca-certificates libpq-dev nodejs npm \
     && rm -rf /var/lib/apt/lists/*
 
 # Install uv package manager
 RUN curl -LsSf https://astral.sh/uv/install.sh | sh
 
-# Copy dependency files and MCP server sources
+# Copy dependency files
 COPY pyproject.toml uv.lock ./
-COPY mcp-servers ./mcp-servers
+
+# Clone MCP servers from upstream repositories (shallow clones)
+RUN mkdir -p /app/mcp-servers \
+    && git clone --depth 1 https://github.com/Augmented-Nature/ChEMBL-MCP-Server.git /app/mcp-servers/ChEMBL-MCP-Server || true \
+    && git clone --depth 1 https://github.com/Augmented-Nature/OpenTargets-MCP-Server.git /app/mcp-servers/OpenTargets-MCP-Server || true
 
 # Create virtual environment and install dependencies (no cache)
 RUN /root/.local/bin/uv venv /app/.venv && \
