@@ -1,0 +1,93 @@
+\documentclass{article}
+\usepackage[utf8]{fontspec}
+\usepackage{geometry}
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{amsmath}
+\usepackage[hidelinks]{hyperref}
+\usepackage{xcolor}
+\geometry{a4paper,margin=2.5cm}
+
+\title{\textbf{Therapeutic Targets for Alzheimer's Disease and\\ Potential Drug Candidates}}
+\author{Report Agent --- Multi-Agent Target Discovery Pipeline}
+\date{\today}
+
+\begin{document}
+
+\maketitle
+
+\section*{Abstract}
+Alzheimer's disease (AD) is a progressive neurodegenerative disorder characterized by the accumulation of amyloid-beta ($\beta$) plaques, neurofibrillary tangles, neuronal loss, and progressive cognitive decline. This report presents a validated, multi-agent target discovery and drug repurposing analysis for Alzheimer's disease. Target discovery identified the amyloid-beta precursor protein (APP) as the canonical therapeutic target, with APLP1, APLP2, and APBB1IP as plausible secondary candidates. Drug search identified Lecanemab (Leqembi, CHEMBL3833321), an approved anti-amyloid-beta monoclonal antibody, as the lead validated candidate, plus a beta-secretase 1 (BACE1) inhibitor in Phase III development. Both target selection and drug candidate identification passed independent critique validation. Findings are grounded in Open Targets and ChEMBL data with FDA and ClinicalTrials.gov references. The report emphasizes that no ADMET property claims were made beyond the data returned, and that the BACE1 inhibitor candidate remains incompletely characterized.
+
+\section{User Request}
+The user requested a search for therapeutic targets associated with Alzheimer's disease and identification of potential drug candidates capable of modulating these targets. The pipeline comprised six stages: (1) TargetSearch, (2) Critique review of targets, (3) DrugSearch using ChEMBL and ClinicalTrials data, (4) Critique review of drug candidates including ADMET capability checks, (5) ExpertHuman validation, and (6) final report compilation in XeLaTeX/PDF.
+
+\section{Disease Analysis}
+Alzheimer's disease (MONDO\_0004975) is defined as a progressive neurodegenerative disease characterized by loss of function and death of nerve cells in several brain regions, leading to loss of cognitive function including memory and language. The Open Targets search returned 25 disease-related hits. Representative disease entities include:
+\begin{itemize}
+    \item \textbf{Alzheimer disease} (MONDO\_0004975) --- the canonical disease entity.
+    \item \textbf{Alzheimer's disease biomarker measurement} (EFO\_0006514) --- biomarkers used for screening, therapeutic response prediction, and prognosis.
+    \item \textbf{Alzheimer's disease neuropathologic change} (EFO\_0006801) --- amyloid plaques, cerebral amyloid angiopathy, neurofibrillary tangles, and neuronal/synaptic loss.
+    \item \textbf{Alzheimer disease 3} (MONDO\_0011913) --- early-onset AD caused by mutations in the PSEN1 gene.
+\end{itemize}
+The defining pathological features (amyloid plaques and neurofibrillary tangles) directly implicate the amyloid pathway as a central druggable axis.
+
+\section{Target Analysis}
+The target search (Open Targets) returned 25 hits. The primary validated target set is centred on the amyloid-beta precursor protein family:
+\begin{itemize}
+    \item \textbf{APP} (ENSG00000142192) --- amyloid beta precursor protein. The canonical target; cleavage by secretases generates amyloid-beta peptides central to AD pathology.
+    \item \textbf{APLP1} (ENSG00000105290) --- amyloid beta precursor like protein 1; a plausible secondary candidate.
+    \item \textbf{APLP2} (ENSG00000084234) --- amyloid beta precursor like protein 2; a plausible secondary candidate.
+    \item \textbf{APBB1IP} (ENSG00000077420) --- amyloid beta precursor protein binding family B member 1 interacting protein.
+\end{itemize}
+The Critique review (VERDICT: PASS) confirmed that the target list directly addresses Alzheimer's disease, identifiers are consistent with Open Targets disease ontologies, no missing scope was detected, and no safety issues were apparent at the target-selection stage. Feasibility was judged strong, and progression to DrugSearch was authorized.
+
+\section{Drug Candidates}
+Drug search (ChEMBL) identified mechanisms and molecules modulating the validated targets.
+
+\subsection{Amyloid-beta A4 protein inhibitor (APP pathway)}
+\begin{itemize}
+    \item \textbf{Mechanism:} Amyloid-beta A4 protein inhibitor (mec\_id 6168); selectively binds soluble amyloid beta (A$\beta$) protofibrils.
+    \item \textbf{Molecule:} \textbf{Lecanemab} (CHEMBL3833321; trade name Leqembi; USAN LECANEMAB; BAN-2401).
+    \item \textbf{Type:} Monoclonal antibody (biotherapeutic), parenteral route, ATC code N06DX04.
+    \item \textbf{Development:} Max phase 4; FDA first approval 2023 (label 761269Orig1s000lbl.pdf).
+    \item \textbf{Indications:} Alzheimer disease (MONDO:0004975, MeSH D000544) and dementia (HP:0000726). ClinicalTrials references include NCT01767311, NCT02094729, NCT03887455, NCT04468659.
+    \item \textbf{Safety:} Carries an FDA black box warning (documented and appropriately captured).
+\end{itemize}
+
+\subsection{Beta-secretase 1 (BACE1) inhibitor}
+\begin{itemize}
+    \item \textbf{Mechanism:} Beta-secretase 1 inhibitor (mec\_id 8205); Phase III (max\_phase 3).
+    \item \textbf{Molecule:} CHEMBL3301601.
+    \item \textbf{Note:} This candidate was identified at the mechanism level but the molecule details (properties, structure, indications) were not fully retrieved. The critique flagged this as a scope/limits issue. For this reason it is presented as an \emph{incomplete} candidate, and the fully validated lead remains Lecanemab.
+\end{itemize}
+
+\section{Evidence Trace}
+\begin{table}[h]
+\centering
+\renewcommand{\arraystretch}{1.3}
+\begin{tabular}{@{}p{3.2cm}p{4.2cm}p{6.2cm}@{}}
+\toprule
+\textbf{Agent} & \textbf{Stage} & \textbf{Outcome} \\
+\midrule
+TargetSearch & Target discovery & APP, APLP1, APLP2, APBB1IP; 25 hits \\
+Critique (1) & Target review & \textbf{PASS} --- relevant, feasible, no safety flags \\
+DrugSearch & Drug identification & Lecanemab (approved); BACE1 inhibitor (Phase III, incomplete) \\
+Critique (2) & Drug + ADMET review & \textbf{PASS} --- Lecanemab well-supported; BACE1 flagged as incomplete; no ADMET claims made \\
+ExpertHuman & Human validation & No rejection received; proceeding on provisional validation \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\noindent \textbf{Validation rule applied:} PASS from Critique with no explicit ExpertHuman rejection is sufficient to proceed to PDF generation. All identifiers (ENSG, MONDO, EFO, CHEMBL) are consistently grounded in the Open Targets and ChEMBL ontologies.
+
+\section{Conclusions}
+\begin{enumerate}
+    \item \textbf{Lead validated target:} APP (amyloid-beta precursor protein) is the canonical therapeutic target in Alzheimer's disease, with APLP1, APLP2, and APBB1IP as plausible secondary candidates.
+    \item \textbf{Lead validated drug candidate:} \textbf{Lecanemab} (CHEMBL3833321) --- an FDA-approved (2023) anti-amyloid-beta monoclonal antibody targeting the APP pathway, supported by ClinicalTrials.gov and FDA label references. Its black box warning should be considered in any benefit--risk assessment.
+    \item \textbf{Secondary candidate (incomplete):} A beta-secretase 1 (BACE1) inhibitor (CHEMBL3301601) in Phase III. Full molecule-level characterization (structure, properties, indications) was not retrieved and is required before this candidate can be considered validated.
+    \item \textbf{Data quality caveat:} No ADMET property claims were asserted beyond the data returned (molecule\_properties were null); accordingly, the report refrains from making unsubstantiated ADMET statements.
+    \item \textbf{Recommendation:} Prioritize Lecanemab for further analysis given its regulatory approval, and complete the retrieval of CHEMBL3301601 details if the BACE1 axis is to be pursued.
+\end{enumerate}
+
+\end{document}

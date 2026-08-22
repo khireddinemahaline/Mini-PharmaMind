@@ -73,6 +73,9 @@ interface AssayInfo {
   confidence_score?: number;
 }
 
+const DEFAULT_SEARCH_LIMIT = 4;
+const DEFAULT_DETAIL_LIMIT = 8;
+
 // Type guards and validation functions
 const isValidCompoundSearchArgs = (
   args: any
@@ -82,7 +85,7 @@ const isValidCompoundSearchArgs = (
     args !== null &&
     typeof args.query === 'string' &&
     args.query.length > 0 &&
-    (args.limit === undefined || (typeof args.limit === 'number' && args.limit > 0 && args.limit <= 1000)) &&
+    (args.limit === undefined || (typeof args.limit === 'number' && args.limit > 0 && args.limit <= 8)) &&
     (args.offset === undefined || (typeof args.offset === 'number' && args.offset >= 0))
   );
 };
@@ -107,7 +110,7 @@ const isValidSimilaritySearchArgs = (
     typeof args.smiles === 'string' &&
     args.smiles.length > 0 &&
     (args.similarity === undefined || (typeof args.similarity === 'number' && args.similarity >= 0 && args.similarity <= 1)) &&
-    (args.limit === undefined || (typeof args.limit === 'number' && args.limit > 0 && args.limit <= 1000))
+    (args.limit === undefined || (typeof args.limit === 'number' && args.limit > 0 && args.limit <= 8))
   );
 };
 
@@ -119,7 +122,7 @@ const isValidSubstructureSearchArgs = (
     args !== null &&
     typeof args.smiles === 'string' &&
     args.smiles.length > 0 &&
-    (args.limit === undefined || (typeof args.limit === 'number' && args.limit > 0 && args.limit <= 1000))
+    (args.limit === undefined || (typeof args.limit === 'number' && args.limit > 0 && args.limit <= 8))
   );
 };
 
@@ -133,7 +136,7 @@ const isValidActivitySearchArgs = (
     (args.assay_chembl_id === undefined || typeof args.assay_chembl_id === 'string') &&
     (args.molecule_chembl_id === undefined || typeof args.molecule_chembl_id === 'string') &&
     (args.activity_type === undefined || typeof args.activity_type === 'string') &&
-    (args.limit === undefined || (typeof args.limit === 'number' && args.limit > 0 && args.limit <= 1000)) &&
+    (args.limit === undefined || (typeof args.limit === 'number' && args.limit > 0 && args.limit <= 8)) &&
     (args.target_chembl_id !== undefined || args.assay_chembl_id !== undefined || args.molecule_chembl_id !== undefined)
   );
 };
@@ -158,7 +161,7 @@ const isValidPropertyFilterArgs = (
     (args.max_logp === undefined || typeof args.max_logp === 'number') &&
     (args.max_hbd === undefined || (typeof args.max_hbd === 'number' && args.max_hbd >= 0)) &&
     (args.max_hba === undefined || (typeof args.max_hba === 'number' && args.max_hba >= 0)) &&
-    (args.limit === undefined || (typeof args.limit === 'number' && args.limit > 0 && args.limit <= 1000))
+    (args.limit === undefined || (typeof args.limit === 'number' && args.limit > 0 && args.limit <= 8))
   );
 };
 
@@ -360,7 +363,7 @@ class ChEMBLServer {
             const response = await this.apiClient.get('/molecule/search.json', {
               params: {
                 q: query,
-                limit: 25,
+                limit: DEFAULT_SEARCH_LIMIT,
               },
             });
 
@@ -400,7 +403,7 @@ class ChEMBLServer {
             type: 'object',
             properties: {
               query: { type: 'string', description: 'Search query (compound name, synonym, or identifier)' },
-              limit: { type: 'number', description: 'Number of results to return (1-1000, default: 25)', minimum: 1, maximum: 1000 },
+              limit: { type: 'number', description: 'Keep retrieval compact for context efficiency; default 4, max 8', minimum: 1, maximum: 8 },
               offset: { type: 'number', description: 'Number of results to skip (default: 0)', minimum: 0 },
             },
             required: ['query'],
@@ -424,7 +427,7 @@ class ChEMBLServer {
             type: 'object',
             properties: {
               inchi: { type: 'string', description: 'InChI key or InChI string' },
-              limit: { type: 'number', description: 'Number of results to return (1-1000, default: 25)', minimum: 1, maximum: 1000 },
+              limit: { type: 'number', description: 'Keep retrieval compact for context efficiency; default 4, max 8', minimum: 1, maximum: 8 },
             },
             required: ['inchi'],
           },
@@ -449,7 +452,7 @@ class ChEMBLServer {
             properties: {
               smiles: { type: 'string', description: 'SMILES string of the query molecule' },
               similarity: { type: 'number', description: 'Similarity threshold (0-1, default: 0.7)', minimum: 0, maximum: 1 },
-              limit: { type: 'number', description: 'Number of results to return (1-1000, default: 25)', minimum: 1, maximum: 1000 },
+              limit: { type: 'number', description: 'Keep retrieval compact for context efficiency; default 4, max 8', minimum: 1, maximum: 8 },
             },
             required: ['smiles'],
           },
@@ -464,7 +467,7 @@ class ChEMBLServer {
               query: { type: 'string', description: 'Target name or search query' },
               target_type: { type: 'string', description: 'Target type filter (e.g., SINGLE PROTEIN, PROTEIN COMPLEX)' },
               organism: { type: 'string', description: 'Organism filter' },
-              limit: { type: 'number', description: 'Number of results to return (1-1000, default: 25)', minimum: 1, maximum: 1000 },
+              limit: { type: 'number', description: 'Keep retrieval compact for context efficiency; default 4, max 8', minimum: 1, maximum: 8 },
             },
             required: ['query'],
           },
@@ -488,7 +491,7 @@ class ChEMBLServer {
             properties: {
               target_chembl_id: { type: 'string', description: 'ChEMBL target ID' },
               activity_type: { type: 'string', description: 'Activity type filter (e.g., IC50, Ki, Kd)' },
-              limit: { type: 'number', description: 'Number of results to return (1-1000, default: 25)', minimum: 1, maximum: 1000 },
+              limit: { type: 'number', description: 'Default 8 max 8 to keep evidence focused and compact', minimum: 1, maximum: 8 },
             },
             required: ['target_chembl_id'],
           },
@@ -500,7 +503,7 @@ class ChEMBLServer {
             type: 'object',
             properties: {
               uniprot_id: { type: 'string', description: 'UniProt accession number' },
-              limit: { type: 'number', description: 'Number of results to return (1-1000, default: 25)', minimum: 1, maximum: 1000 },
+              limit: { type: 'number', description: 'Keep retrieval compact for context efficiency; default 4, max 8', minimum: 1, maximum: 8 },
             },
             required: ['uniprot_id'],
           },
@@ -527,7 +530,7 @@ class ChEMBLServer {
               assay_chembl_id: { type: 'string', description: 'ChEMBL assay ID filter' },
               molecule_chembl_id: { type: 'string', description: 'ChEMBL compound ID filter' },
               activity_type: { type: 'string', description: 'Activity type (e.g., IC50, Ki, EC50)' },
-              limit: { type: 'number', description: 'Number of results to return (1-1000, default: 25)', minimum: 1, maximum: 1000 },
+              limit: { type: 'number', description: 'Default 8 max 8 to keep assay evidence review focused', minimum: 1, maximum: 8 },
             },
             required: [],
           },
@@ -553,7 +556,7 @@ class ChEMBLServer {
               min_value: { type: 'number', description: 'Minimum activity value' },
               max_value: { type: 'number', description: 'Maximum activity value' },
               units: { type: 'string', description: 'Units filter (e.g., nM, uM)' },
-              limit: { type: 'number', description: 'Number of results to return (1-1000, default: 25)', minimum: 1, maximum: 1000 },
+              limit: { type: 'number', description: 'Default 8 max 8 to keep assay evidence review focused', minimum: 1, maximum: 8 },
             },
             required: ['activity_type'],
           },
@@ -593,7 +596,7 @@ class ChEMBLServer {
               query: { type: 'string', description: 'Drug name or search query' },
               development_phase: { type: 'string', description: 'Development phase filter (e.g., Approved, Phase III)' },
               therapeutic_area: { type: 'string', description: 'Therapeutic area filter' },
-              limit: { type: 'number', description: 'Number of results to return (1-1000, default: 25)', minimum: 1, maximum: 1000 },
+              limit: { type: 'number', description: 'Keep retrieval compact for context efficiency; default 4, max 8', minimum: 1, maximum: 8 },
             },
             required: ['query'],
           },
@@ -617,7 +620,7 @@ class ChEMBLServer {
             properties: {
               indication: { type: 'string', description: 'Disease or indication search term' },
               drug_type: { type: 'string', description: 'Drug type filter (e.g., Small molecule, Antibody)' },
-              limit: { type: 'number', description: 'Number of results to return (1-1000, default: 25)', minimum: 1, maximum: 1000 },
+              limit: { type: 'number', description: 'Keep retrieval compact for context efficiency; default 4, max 8', minimum: 1, maximum: 8 },
             },
             required: ['indication'],
           },
@@ -689,7 +692,7 @@ class ChEMBLServer {
             type: 'object',
             properties: {
               smiles: { type: 'string', description: 'SMILES string of the substructure query' },
-              limit: { type: 'number', description: 'Number of results to return (1-1000, default: 25)', minimum: 1, maximum: 1000 },
+              limit: { type: 'number', description: 'Keep retrieval compact for context efficiency; default 4, max 8', minimum: 1, maximum: 8 },
             },
             required: ['smiles'],
           },
@@ -728,7 +731,7 @@ class ChEMBLServer {
               max_logp: { type: 'number', description: 'Maximum LogP value' },
               max_hbd: { type: 'number', description: 'Maximum hydrogen bond donors', minimum: 0 },
               max_hba: { type: 'number', description: 'Maximum hydrogen bond acceptors', minimum: 0 },
-              limit: { type: 'number', description: 'Number of results to return (1-1000, default: 25)', minimum: 1, maximum: 1000 },
+              limit: { type: 'number', description: 'Keep retrieval compact for context efficiency; default 4, max 8', minimum: 1, maximum: 8 },
             },
             required: [],
           },
@@ -831,7 +834,7 @@ class ChEMBLServer {
       const response = await this.apiClient.get('/molecule/search.json', {
         params: {
           q: args.query,
-          limit: args.limit || 25,
+          limit: Math.min(args.limit ?? DEFAULT_SEARCH_LIMIT, DEFAULT_SEARCH_LIMIT),
           offset: args.offset || 0,
         },
       });
@@ -886,7 +889,7 @@ class ChEMBLServer {
       const response = await this.apiClient.get('/molecule/search.json', {
         params: {
           q: args.inchi,
-          limit: args.limit || 25,
+          limit: Math.min(args.limit ?? DEFAULT_SEARCH_LIMIT, DEFAULT_SEARCH_LIMIT),
         },
       });
 
@@ -942,7 +945,7 @@ class ChEMBLServer {
       const similarity = args.similarity !== undefined ? Math.round(args.similarity * 100) : 70;
       const response = await this.apiClient.get('/similarity/' + encodeURIComponent(args.smiles) + '/' + similarity + '.json', {
         params: {
-          limit: args.limit || 25,
+          limit: Math.min(args.limit ?? DEFAULT_SEARCH_LIMIT, DEFAULT_SEARCH_LIMIT),
         },
       });
 
@@ -965,7 +968,7 @@ class ChEMBLServer {
   private async handleSearchTargets(args: any) {
     try {
       const response = await this.apiClient.get('/target/search.json', {
-        params: { q: args.query, limit: args.limit || 25 },
+        params: { q: args.query, limit: Math.min(args.limit ?? DEFAULT_SEARCH_LIMIT, DEFAULT_SEARCH_LIMIT) },
       });
       return { content: [{ type: 'text', text: JSON.stringify(response.data, null, 2) }] };
     } catch (error) {
@@ -995,7 +998,7 @@ class ChEMBLServer {
     try {
       const params: any = {
         target_chembl_id: args.target_chembl_id,
-        limit: args.limit || 25,
+        limit: Math.min(args.limit ?? DEFAULT_DETAIL_LIMIT, DEFAULT_DETAIL_LIMIT),
       };
 
       if (args.activity_type) {
@@ -1039,7 +1042,7 @@ class ChEMBLServer {
       const response = await this.apiClient.get('/target/search.json', {
         params: {
           q: args.uniprot_id,
-          limit: args.limit || 25,
+          limit: Math.min(args.limit ?? DEFAULT_SEARCH_LIMIT, DEFAULT_SEARCH_LIMIT),
         },
       });
 
@@ -1098,7 +1101,7 @@ class ChEMBLServer {
 
   private async handleSearchActivities(args: any) {
     try {
-      const params: any = { limit: args.limit || 25 };
+      const params: any = { limit: Math.min(args.limit ?? DEFAULT_DETAIL_LIMIT, DEFAULT_DETAIL_LIMIT) };
       if (args.target_chembl_id) params.target_chembl_id = args.target_chembl_id;
       if (args.molecule_chembl_id) params.molecule_chembl_id = args.molecule_chembl_id;
       if (args.activity_type) params.standard_type = args.activity_type;
@@ -1132,7 +1135,7 @@ class ChEMBLServer {
     try {
       const params: any = {
         standard_type: args.activity_type,
-        limit: args.limit || 25,
+        limit: Math.min(args.limit ?? DEFAULT_DETAIL_LIMIT, DEFAULT_DETAIL_LIMIT),
       };
 
       if (args.min_value !== undefined) {
@@ -1171,7 +1174,7 @@ class ChEMBLServer {
     try {
       const params: any = {
         molecule_chembl_id: args.molecule_chembl_id,
-        limit: 100,
+        limit: DEFAULT_DETAIL_LIMIT,
       };
 
       if (args.target_chembl_id) {
@@ -1224,7 +1227,7 @@ class ChEMBLServer {
       for (const chemblId of args.molecule_chembl_ids.slice(0, 10)) {
         const params: any = {
           molecule_chembl_id: chemblId,
-          limit: 50,
+          limit: DEFAULT_DETAIL_LIMIT,
         };
 
         if (args.target_chembl_id) {
@@ -1280,7 +1283,7 @@ class ChEMBLServer {
       // Search for drugs using molecule endpoint with max_phase filter
       const params: any = {
         q: args.query,
-        limit: args.limit || 25,
+        limit: Math.min(args.limit ?? DEFAULT_SEARCH_LIMIT, DEFAULT_SEARCH_LIMIT),
       };
 
       const response = await this.apiClient.get('/molecule/search.json', { params });
@@ -1323,7 +1326,7 @@ class ChEMBLServer {
       let indications = [];
       try {
         const indicationResponse = await this.apiClient.get('/drug_indication.json', {
-          params: { molecule_chembl_id: args.chembl_id, limit: 50 },
+          params: { molecule_chembl_id: args.chembl_id, limit: DEFAULT_DETAIL_LIMIT },
         });
         indications = indicationResponse.data.drug_indications || [];
       } catch (e) {
@@ -1360,7 +1363,7 @@ class ChEMBLServer {
       const response = await this.apiClient.get('/drug_indication.json', {
         params: {
           q: args.indication,
-          limit: args.limit || 25,
+          limit: Math.min(args.limit ?? DEFAULT_SEARCH_LIMIT, DEFAULT_SEARCH_LIMIT),
         },
       });
 
@@ -1389,7 +1392,7 @@ class ChEMBLServer {
       const response = await this.apiClient.get('/mechanism.json', {
         params: {
           molecule_chembl_id: args.chembl_id,
-          limit: 50,
+          limit: DEFAULT_DETAIL_LIMIT,
         },
       });
 
@@ -1794,7 +1797,7 @@ class ChEMBLServer {
       // ChEMBL substructure search using SMILES
       const response = await this.apiClient.get('/substructure/' + encodeURIComponent(args.smiles) + '.json', {
         params: {
-          limit: args.limit || 25,
+          limit: Math.min(args.limit ?? DEFAULT_SEARCH_LIMIT, DEFAULT_SEARCH_LIMIT),
         },
       });
 
@@ -1939,7 +1942,7 @@ class ChEMBLServer {
       }
 
       const filterString = filters.join('&');
-      const response = await this.apiClient.get(`/molecule.json?${filterString}&limit=${args.limit || 25}`);
+      const response = await this.apiClient.get(`/molecule.json?${filterString}&limit=${Math.min(args.limit ?? DEFAULT_SEARCH_LIMIT, DEFAULT_SEARCH_LIMIT)}`);
 
       return {
         content: [

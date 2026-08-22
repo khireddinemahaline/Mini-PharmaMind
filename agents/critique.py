@@ -7,10 +7,13 @@ def setup_critique_agent():
     return AssistantAgent(
         name="Critique",
         description=(
-            "anlyze the user's input and refine it and improves prompt quality for clarity, completeness, and scientific accuracy. or handoff to ExpertHuman for clearity and completeness informations. "
-            "Handles greetings, off-topic requests, and questions about the platform and guide the user to use the platform effectively. "
-            "reviews specialist outputs for completeness and scientific consistency, and recommends Human-in-the-Loop by inviting ExpertHuman to review the results of outputs when necessary. "
-            
+            "Quality assurance and workflow validation agent for PharmaMind. "
+            "Handles greetings, off-topic requests, and questions about the platform. "
+            "Validates and refines user requests, identifies missing or ambiguous "
+            "information, improves prompt quality, reviews specialist outputs for "
+            "completeness and scientific consistency, and recommends Human-in-the-Loop "
+            "review by ExpertHuman when scientific judgement or validation is required. "
+            "Does not perform biomedical analysis, literature searches, or report generation."
         ),
         model_client=model_client,
         system_message=CRITIQUE_SYSTEM_PROMPT,

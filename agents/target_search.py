@@ -18,7 +18,7 @@ Example:
 """
 
 from autogen_agentchat.agents import AssistantAgent
-from autogen_ext.tools.mcp import StdioServerParams, mcp_server_tools
+from autogen_ext.tools.mcp import McpWorkbench, StdioServerParams
 
 from config.llm_client import model_client
 from config.sytem_prompts import SYSTEM_PROMPTS_TARGET_SEARCH
@@ -53,21 +53,22 @@ async def target_search_agent() -> AssistantAgent:
     """
 
     project_root = Path(__file__).resolve().parent.parent
-    opentarget_server = StdioServerParams(
-        command="node",
-        args=[
-            str(project_root / "mcp-servers" / "OpenTargets-MCP-Server" / "build" / "index.js"),
-        ],
+    opentarget_workbench = McpWorkbench(
+        server_params=StdioServerParams(
+            command="node",
+            args=[
+                str(project_root / "mcp-servers" / "OpenTargets-MCP-Server" / "build" / "index.js"),
+            ],
+            read_timeout_seconds=60,
+        )
     )
-
-    open_target_tools = await mcp_server_tools(opentarget_server)
 
     return AssistantAgent(
         name="TargetSearch",
         description=(
             "A specialized biomedical research agent for therapeutic target "
             "discovery and disease analysis. The agent leverages the "
-            "OpenTargets MCP server to identify diseases and their associated "
+            "OpenTargets MCP workbench to identify diseases and their associated "
             "genes, proteins, receptors, enzymes, biomarkers, pathways, and "
             "other biologically relevant targets. It retrieves disease "
             "descriptions, target functions, expression profiles, "
@@ -79,6 +80,9 @@ async def target_search_agent() -> AssistantAgent:
         ),
         model_client=model_client,
         system_message=SYSTEM_PROMPTS_TARGET_SEARCH,
-        tools=[*open_target_tools],
+        workbench=opentarget_workbench,
         model_client_stream=True,
+                max_tool_iterations=3,
+
+
     )

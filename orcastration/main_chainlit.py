@@ -255,8 +255,10 @@ async def initialize_agents():
     try:
         termination_word = TextMentionTermination("TERMINATE")
         model_context = UnboundedChatCompletionContext()  # 10 was too tight — see note
+        
         termination_ext = ExternalTermination()
-        termination = termination_word | termination_ext
+        source_match_termination = SourceMatchTermination("ReportAgent")
+        termination = termination_word | termination_ext | source_match_termination  # Combine termination conditions
         # SourceMatchTermination removed entirely — see below
 
         target_agent = await target_search_agent()
@@ -283,7 +285,6 @@ async def initialize_agents():
             allow_repeated_speaker=True,
             selector_prompt=SELECT_PROMPT,
             model_context=model_context,
-            max_turns=50,
         )
         return team, termination_ext
     except Exception as e:

@@ -46,6 +46,7 @@ dependencies = [
     "arize-otel>=0.7.0",
     "arize[prompthub]>=7.26.0,<8.0.0",
     "openinference-instrumentation-autogen-agentchat>=0.1.0",
+    "langchain-openai>=1.6.0",
 ]
 
 
