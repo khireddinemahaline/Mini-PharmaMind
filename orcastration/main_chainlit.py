@@ -36,7 +36,6 @@ from autogen_agentchat.base import TaskResult
 from autogen_agentchat.conditions import (
     ExternalTermination,
     MaxMessageTermination,
-    SourceMatchTermination,
     TextMentionTermination,
 )
 from autogen_agentchat.messages import (
@@ -224,12 +223,11 @@ async def initialize_agents():
         #   3. ReportAgent becomes the source of a terminating message.
         termination_word = TextMentionTermination("TERMINATE")
         termination_ext = ExternalTermination()
-        source_match_termination = SourceMatchTermination("ReportAgent")
+        
 
         termination = (
             termination_word
             | termination_ext
-            | source_match_termination
         )
 
         # Unbounded context avoids the artificial small context restriction
