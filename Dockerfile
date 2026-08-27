@@ -2,14 +2,6 @@
 # Mini-PharmaMind - Multi-Agent Pharmaceutical Research System
 # ============================================================================
 # Multi-stage Dockerfile optimized for production deployment
-#
-# MCP servers are copied from the LOCAL project directory:
-#
-#   mcp-servers/
-#   ├── ChEMBL-MCP-Server/
-#   └── OpenTargets-MCP-Server/
-#
-# No git clone is performed during the Docker build.
 # ============================================================================
 
 ##############################################
@@ -19,7 +11,9 @@ FROM python:3.10-slim-bookworm AS builder
 
 WORKDIR /app
 
-# Install build dependencies
+# ------------------------------------------------------------
+# Build dependencies
+# ------------------------------------------------------------
 RUN apt-get update && apt-get install -y --no-install-recommends \
     gcc \
     g++ \
@@ -30,24 +24,18 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     npm \
     && rm -rf /var/lib/apt/lists/*
 
-# Install uv package manager
+# ------------------------------------------------------------
+# Install uv
+# ------------------------------------------------------------
 RUN curl -LsSf https://astral.sh/uv/install.sh | sh
 
-# Copy Python dependency files
+# ------------------------------------------------------------
+# Python dependencies
+# ------------------------------------------------------------
 COPY pyproject.toml uv.lock ./
 
-# ------------------------------------------------------------
-# Copy MCP servers from the LOCAL project directory.
-#
-# Expected local structure:
-#
-# mcp-servers/
-# ├── ChEMBL-MCP-Server/
-# └── OpenTargets-MCP-Server/
-# ------------------------------------------------------------
 COPY mcp-servers /app/mcp-servers
 
-# Create Python virtual environment and install dependencies
 RUN /root/.local/bin/uv venv /app/.venv && \
     /root/.local/bin/uv pip install \
     --python /app/.venv/bin/python \
@@ -55,9 +43,8 @@ RUN /root/.local/bin/uv venv /app/.venv && \
     --no-cache
 
 # ------------------------------------------------------------
-# Build local MCP servers
+# Build MCP servers
 # ------------------------------------------------------------
-
 RUN cd /app/mcp-servers/ChEMBL-MCP-Server && \
     npm install && \
     npm run build
@@ -72,9 +59,8 @@ RUN cd /app/mcp-servers/OpenTargets-MCP-Server && \
 ##############################################
 FROM python:3.10-slim-bookworm
 
-# Metadata labels
 LABEL maintainer="MHLAINE Khireddine <mhalaine.khireddine.chimie@gmail.com>" \
-    description="Mini-PharmaMind: Lightweight multi-agent AI for pharmaceutical research (mini version)" \
+    description="Mini-PharmaMind: Lightweight multi-agent AI for pharmaceutical research" \
     version="0.1.0-mini" \
     license="MIT" \
     url="https://github.com/khireddinemahaline/mini-pharmamind"
@@ -83,6 +69,9 @@ WORKDIR /app
 
 # ------------------------------------------------------------
 # Runtime dependencies
+#
+# IMPORTANT:
+# xelatex is required by save_pdf
 # ------------------------------------------------------------
 RUN apt-get update && apt-get install -y --no-install-recommends \
     curl \
@@ -92,8 +81,18 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libatomic1 \
     nodejs \
     npm \
+    texlive-xetex \
+    texlive-latex-extra \
+    texlive-fonts-recommended \
+    fonts-dejavu \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
+
+# ------------------------------------------------------------
+# Verify LaTeX installation during image build
+# ------------------------------------------------------------
+RUN which xelatex && \
+    xelatex --version
 
 # ------------------------------------------------------------
 # Create non-root user
@@ -107,7 +106,7 @@ RUN groupadd -r pharma --gid=1000 && \
     pharma
 
 # ------------------------------------------------------------
-# Copy Python environment from builder
+# Copy Python environment
 # ------------------------------------------------------------
 COPY --from=builder \
     --chown=pharma:pharma \
@@ -115,7 +114,7 @@ COPY --from=builder \
     /app/.venv
 
 # ------------------------------------------------------------
-# Copy locally provided and BUILT MCP servers
+# Copy MCP servers
 # ------------------------------------------------------------
 COPY --from=builder \
     --chown=pharma:pharma \
@@ -123,7 +122,7 @@ COPY --from=builder \
     /app/mcp-servers
 
 # ------------------------------------------------------------
-# Copy application files
+# Copy application
 # ------------------------------------------------------------
 COPY --chown=pharma:pharma agents ./agents
 COPY --chown=pharma:pharma config ./config
@@ -135,7 +134,7 @@ COPY --chown=pharma:pharma public ./public
 COPY --chown=pharma:pharma chainlit.md ./chainlit.md
 
 # ------------------------------------------------------------
-# Setup required directories
+# Required directories
 # ------------------------------------------------------------
 RUN mkdir -p \
     session_state \
@@ -145,7 +144,7 @@ RUN mkdir -p \
     && chmod -R 755 /app
 
 # ------------------------------------------------------------
-# Clean Python cache files
+# Clean Python cache
 # ------------------------------------------------------------
 RUN find /app \
     -type f \
@@ -190,7 +189,7 @@ HEALTHCHECK \
     CMD curl -f http://localhost:8000/health || exit 1
 
 # ------------------------------------------------------------
-# Run as non-root
+# Non-root runtime
 # ------------------------------------------------------------
 USER pharma
 
