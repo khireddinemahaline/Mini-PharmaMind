@@ -28,5 +28,5 @@ model_client = OpenAIChatCompletionClient(
     parallel_tool_calls=False,
     max_retries=10,
     timeout=200,
-    max_tokens="300000
+    max_tokens=300000
 )
