@@ -21,7 +21,7 @@ model_client = OpenAIChatCompletionClient(
         "json_output": False,
         "structured_output": False,
     },
-    reasoning_effort="high",
+    reasoning_effort="none",
     extra_body={
         "thinking": {"type": "disabled"}
     },
