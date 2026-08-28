@@ -202,6 +202,12 @@ WORKFLOW:
 4. Do NOT terminate before `save_to_pdf` succeeds and the PDF is created.
 
 Only ReportAgent may output TERMINATE.
+After the final report has been successfully generated and validated,
+end your final message with the exact token:
+
+TERMINATE
+
+Do not output TERMINATE before the report is complete.
 
 ReportAgent MUST output TERMINATE only after:
 1. ExpertHuman approval is present.
