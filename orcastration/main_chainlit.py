@@ -209,7 +209,7 @@ def sanitize_termination_word(content: str) -> str:
     if not content:
         return content
 
-    return content.replace("TERMINATE", "").strip()
+    return content.replace("TERMINATE", "")
 
 
 # ===========================================================================
