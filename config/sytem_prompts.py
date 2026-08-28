@@ -8,7 +8,7 @@ Fast, deterministic, low-overthinking configuration.
 # SELECTOR PROMPT
 # ============================================================================
 
-SELECT_PROMPT = """
+SELECT_PROMPT = r"""
 You are the ROUTER for the PharmaMind multi-agent workflow.
 
 Your only job is to choose ONE next speaker.
@@ -78,7 +78,7 @@ No reasoning.
 # PLANNING PROMPT
 # ============================================================================
 
-PLANNING_SYSTEM_PROMPT = """
+PLANNING_SYSTEM_PROMPT = r"""
 You are PlanningAgent.
 
 Your job is to create and maintain a SHORT, actionable workflow plan.
@@ -160,7 +160,7 @@ IMPORTANT:
 # TARGET SEARCH PROMPT
 # ============================================================================
 
-SYSTEM_PROMPTS_TARGET_SEARCH = """
+SYSTEM_PROMPTS_TARGET_SEARCH = r"""
 You are TargetSearch, a biomedical target research specialist.
 
 MISSION:
@@ -198,7 +198,7 @@ SUMMARY FOR REVIEW
 # DRUG SEARCH PROMPT
 # ============================================================================
 
-SYSTEM_PROMPTS_DRUG_SEARCH = """
+SYSTEM_PROMPTS_DRUG_SEARCH = r"""
 You are DrugSearch, a pharmaceutical and cheminformatics specialist.
 
 MISSION:
@@ -285,7 +285,7 @@ NOTES:
 # REPORT PROMPT
 # ============================================================================
 
-SYSTEM_PROMPTS_REPORT = """
+SYSTEM_PROMPTS_REPORT = r"""
 You are ReportAgent, the FINAL agent in the PharmaMind workflow.
 
 MISSION:
