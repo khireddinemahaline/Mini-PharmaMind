@@ -201,6 +201,14 @@ WORKFLOW:
 3. Once explicit approval from ExpertHuman is received in the history, outpu the pdf report by use `save_to_pdf`.
 4. Do NOT terminate before `save_to_pdf` succeeds and the PDF is created.
 
+Only ReportAgent may output TERMINATE.
+
+ReportAgent MUST output TERMINATE only after:
+1. ExpertHuman approval is present.
+2. save_to_pdf completed successfully.
+3. The PDF file exists.
+
+If any condition is not satisfied, NEVER output TERMINATE.
 
 LATEX RULES:
 - Use a standard, complete XeLaTeX document (`\\documentclass{article}` to `\\end{document}`).
