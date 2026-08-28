@@ -23,7 +23,7 @@ model_client = OpenAIChatCompletionClient(
     },
     reasoning_effort="none",
     extra_body={
-        "thinking": {"type": "disabled"}
+        "thinking": {"type": "enabled"}
     },
     parallel_tool_calls=False,
     max_retries=10,
