@@ -1,6 +1,4 @@
-from pathlib import Path
-
-content = r'''#!/usr/bin/env python3
+#!/usr/bin/env python3
 """
 Agentic Pharma System - Chainlit Interface
 
@@ -1210,9 +1208,3 @@ if __name__ == "__main__":
         "Run with: "
         "chainlit run orcastration/main_chainlit.py"
     )
-'''
-
-path = Path("/mnt/data/main_chainlit.py")
-path.write_text(content, encoding="utf-8")
-print(f"Created: {path}")
-print(f"Lines: {len(content.splitlines())}")
