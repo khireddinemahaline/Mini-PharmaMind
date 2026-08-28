@@ -496,7 +496,7 @@ async def initialize_agents():
             ],
             model_client=model_client,
             termination_condition=termination,
-            allow_repeated_speaker=True,
+            allow_repeated_speaker=False,
             selector_prompt=SELECT_PROMPT,
             model_context=model_context,
         )
