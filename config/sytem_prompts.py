@@ -15,7 +15,7 @@ STATE CONTRACT:
 
 ROUTING RULES (apply in order, first match wins):
 0. No PLAN_STATUS table exists yet -> Select Planning.
-1. All steps in PLAN_STATUS are "done" AND final report delivered -> Select Planning (to terminate) will responde with one word `TERMINATE`.
+1. All steps in PLAN_STATUS are "done" AND final report delivered -> Select Planning (to terminate) Planning will return `TERMINATE`.
 2. Any step marked "failed" -> Select Planning (to revise plan).
 3. ReportAgent just requested ExpertHuman approval -> Select ExpertHuman.
 4. Critique's last verdict was ESCALATE_TO_HUMAN -> Select ExpertHuman.
@@ -82,6 +82,7 @@ Set `terminate: true` ONLY when:
 1. All plan steps = "done".
 2. Required ReportAgent step = "done".
 3. All required ExpertHuman milestones are validated.
+4. after all stepes done and PDF is sucsucfully generated from ReportAgent return the word `TERMINATE`
 
 """
 
