@@ -8,7 +8,7 @@ Key behavior:
     - Multi-agent orchestration with AutoGen SelectorGroupChat
     - Streaming agent output
     - Visible tool-call events in Chainlit
-    - Human-in-the-loop support
+    - Fully autonomous pipeline — no human-in-the-loop checkpoint
     - Persistent team state
     - PDF detection and download after TaskResult
     - TERMINATE is the normal workflow completion signal
@@ -47,7 +47,6 @@ import chainlit as cl
 from autogen_core import CancellationToken
 from autogen_core.model_context import UnboundedChatCompletionContext
 
-from autogen_agentchat.agents import UserProxyAgent
 from autogen_agentchat.base import TaskResult
 from autogen_agentchat.conditions import (
     ExternalTermination,
@@ -363,54 +362,6 @@ async def show_pdf(
 
 
 # ============================================================================
-# HUMAN INPUT
-# ============================================================================
-
-async def user_input_func(
-    prompt: str,
-    cancellation_token: CancellationToken | None = None,
-) -> str:
-    """
-    Capture human input through Chainlit.
-
-    CancellationToken is accepted because AutoGen supplies it to the callback.
-    asyncio.CancelledError is the actual Python task-cancellation exception.
-    """
-
-    try:
-        response = await cl.AskUserMessage(
-            content=prompt,
-            timeout=300,
-            raise_on_timeout=True,
-        ).send()
-
-        if response:
-            return response["output"]  # type: ignore[index]
-
-        return "User did not provide any input."
-
-    except asyncio.CancelledError:
-        print("🛑 Human input request was cancelled.")
-        raise
-
-    except TimeoutError:
-        print(
-            "⚠️ User input request timed out after 300 seconds."
-        )
-        return (
-            "User did not provide any input within the time limit."
-        )
-
-    except Exception as exc:
-        print(
-            f"❌ Error getting user input: {exc}"
-        )
-        return (
-            "An error occurred while requesting user input."
-        )
-
-
-# ============================================================================
 # AGENT INITIALIZATION
 # ============================================================================
 
@@ -419,7 +370,8 @@ async def initialize_agents():
     Initialize the complete agent team.
 
     Normal termination:
-        ReportAgent emits TERMINATE after successful PDF generation.
+        ReportAgent emits TERMINATE after successful PDF generation
+        (via Planning, once all plan steps are done).
 
     Manual stop:
         ExternalTermination is available for explicit cancellation.
@@ -467,22 +419,12 @@ async def initialize_agents():
 
         planning_agent = setup_planning_agent()
 
-        expert_human = UserProxyAgent(
-            name="ExpertHuman",
-            description=(
-                "A Human-in-the-Loop biomedical expert who reviews and "
-                "validates AI-generated findings during the drug discovery "
-                "workflow. The expert provides scientific judgement, "
-                "approves or revises target and drug rankings, resolves "
-                "conflicting evidence, answers clarification requests, "
-                "and records the final human decision before the workflow "
-                "proceeds."
-            ),
-            input_func=user_input_func,
-        )
-
         # --------------------------------------------------------------------
         # SelectorGroupChat
+        #
+        # ExpertHuman / UserProxyAgent removed — the pipeline is fully
+        # autonomous. Planning, Critique, and ReportAgent resolve
+        # NEEDS_REVISION and failure states without a human checkpoint.
         # --------------------------------------------------------------------
 
         team = SelectorGroupChat(
@@ -492,7 +434,6 @@ async def initialize_agents():
                 drug_agent,
                 report,
                 critique_agent,
-                expert_human,
             ],
             model_client=model_client,
             termination_condition=termination,
@@ -1110,7 +1051,7 @@ async def handle_message(
         async for msg in team.run_stream(
             task=TextMessage(
                 content=message.content,
-                source="ExpertHuman",
+                source="User",
             ),
             cancellation_token=cancellation_token,
         ):
@@ -1607,41 +1548,69 @@ async def on_stop():
 # ============================================================================
 # CHAT END
 # ============================================================================
+
 @cl.on_chat_end
 async def on_chat_end():
+    """
+    Cancel active work and persist the session state.
+    """
+
     try:
-        print(
-            "🔴 on_chat_end FIRED | "
-            f"thread={cl.user_session.get('thread_id')} | "
-            f"is_processing={cl.user_session.get('is_processing', False)}"
+
+        token = cl.user_session.get(
+            "cancellation_token"
         )
 
-        # IMPORTANT:
-        # Do NOT cancel the running workflow here.
-        #
-        # A WebSocket/session disconnect must not automatically
-        # cancel a long-running AutoGen workflow.
+        if token is not None:
+            token.cancel()
 
-        team = cl.user_session.get("team")
-        username = cl.user_session.get("username")
-        thread_id = cl.user_session.get("thread_id")
+        team = cl.user_session.get(
+            "team"
+        )
+
+        username = cl.user_session.get(
+            "username"
+        )
+
+        thread_id = cl.user_session.get(
+            "thread_id"
+        )
+
+        has_sent_message = cl.user_session.get(
+            "has_sent_message",
+            False,
+        )
 
         if (
-            team is not None
+            has_sent_message
+            and team is not None
             and username
             and thread_id
-            and cl.user_session.get("has_sent_message", False)
         ):
+
             await save_team_state_to_disk(
                 team,
                 username,
                 thread_id,
             )
 
+            print(
+                f"💾 Final state saved for "
+                f"'{username}' / '{thread_id}'."
+            )
+
+        else:
+
+            print(
+                "⏭️ Chat closed without workflow state."
+            )
+
     except Exception as exc:
+
         print(
-            f"⚠️ Error in on_chat_end: {exc}"
+            f"⚠️ Error saving state on chat end: {exc}"
         )
+
 
 # ============================================================================
 # SETTINGS
@@ -1693,6 +1662,3 @@ if __name__ == "__main__":
         "orcastration/main_chainlit.py "
         "-w --host 0.0.0.0 --port 8000"
     )
-
-
-
