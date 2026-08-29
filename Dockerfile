@@ -269,4 +269,4 @@ ENTRYPOINT ["/usr/bin/dumb-init", "--"]
 # ----------------------------------------------------------------------------
 # Start application
 # ----------------------------------------------------------------------------
-CMD ["bash", "-c", "prisma db push && chainlit run orcastration/main_chainlit.py -w --host 0.0.0.0 --port 8000"]
+CMD ["bash", "-c", "prisma db push && chainlit run orcastration/main_chainlit.py --host 0.0.0.0 --port 8000"]
