@@ -1549,67 +1549,6 @@ async def on_stop():
 # CHAT END
 # ============================================================================
 
-@cl.on_chat_end
-async def on_chat_end():
-    """
-    Cancel active work and persist the session state.
-    """
-
-    try:
-
-        token = cl.user_session.get(
-            "cancellation_token"
-        )
-
-        if token is not None:
-            token.cancel()
-
-        team = cl.user_session.get(
-            "team"
-        )
-
-        username = cl.user_session.get(
-            "username"
-        )
-
-        thread_id = cl.user_session.get(
-            "thread_id"
-        )
-
-        has_sent_message = cl.user_session.get(
-            "has_sent_message",
-            False,
-        )
-
-        if (
-            has_sent_message
-            and team is not None
-            and username
-            and thread_id
-        ):
-
-            await save_team_state_to_disk(
-                team,
-                username,
-                thread_id,
-            )
-
-            print(
-                f"💾 Final state saved for "
-                f"'{username}' / '{thread_id}'."
-            )
-
-        else:
-
-            print(
-                "⏭️ Chat closed without workflow state."
-            )
-
-    except Exception as exc:
-
-        print(
-            f"⚠️ Error saving state on chat end: {exc}"
-        )
 
 
 # ============================================================================
