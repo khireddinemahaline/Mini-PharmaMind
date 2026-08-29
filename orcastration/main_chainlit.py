@@ -1607,69 +1607,41 @@ async def on_stop():
 # ============================================================================
 # CHAT END
 # ============================================================================
-
 @cl.on_chat_end
 async def on_chat_end():
-    """
-    Cancel active work and persist the session state.
-    """
-
     try:
-
-        token = cl.user_session.get(
-            "cancellation_token"
+        print(
+            "🔴 on_chat_end FIRED | "
+            f"thread={cl.user_session.get('thread_id')} | "
+            f"is_processing={cl.user_session.get('is_processing', False)}"
         )
 
-        if token is not None:
-            token.cancel()
+        # IMPORTANT:
+        # Do NOT cancel the running workflow here.
+        #
+        # A WebSocket/session disconnect must not automatically
+        # cancel a long-running AutoGen workflow.
 
-        team = cl.user_session.get(
-            "team"
-        )
-
-        username = cl.user_session.get(
-            "username"
-        )
-
-        thread_id = cl.user_session.get(
-            "thread_id"
-        )
-
-        has_sent_message = cl.user_session.get(
-            "has_sent_message",
-            False,
-        )
+        team = cl.user_session.get("team")
+        username = cl.user_session.get("username")
+        thread_id = cl.user_session.get("thread_id")
 
         if (
-            has_sent_message
-            and team is not None
+            team is not None
             and username
             and thread_id
+            and cl.user_session.get("has_sent_message", False)
         ):
-
             await save_team_state_to_disk(
                 team,
                 username,
                 thread_id,
             )
 
-            print(
-                f"💾 Final state saved for "
-                f"'{username}' / '{thread_id}'."
-            )
-
-        else:
-
-            print(
-                "⏭️ Chat closed without workflow state."
-            )
-
     except Exception as exc:
-
         print(
-            f"⚠️ Error saving state on chat end: {exc}"
+            f"⚠️ Error in on_chat_end: {exc}"
         )
-
 
 # ============================================================================
 # SETTINGS
