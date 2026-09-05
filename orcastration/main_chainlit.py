@@ -8,7 +8,7 @@ Key behavior:
     - Multi-agent orchestration with AutoGen SelectorGroupChat
     - Streaming agent output
     - Visible tool-call events in Chainlit
-    - Fully autonomous pipeline — no human-in-the-loop checkpoint
+    - Human-in-the-loop support
     - Persistent team state
     - PDF detection and download after TaskResult
     - TERMINATE is the normal workflow completion signal
@@ -19,6 +19,7 @@ Key behavior:
 from __future__ import annotations
 
 import asyncio
+import logging
 import json
 import os
 import sys
@@ -38,6 +39,22 @@ load_dotenv(PROJECT_ROOT / ".env")
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
+import logging
+
+from autogen_agentchat import EVENT_LOGGER_NAME, TRACE_LOGGER_NAME
+
+logging.basicConfig(level=logging.WARNING)
+
+# For trace logging.
+trace_logger = logging.getLogger(TRACE_LOGGER_NAME)
+trace_logger.addHandler(logging.StreamHandler())
+trace_logger.setLevel(logging.DEBUG)
+
+# For structured message logging, such as low-level messages between agents.
+event_logger = logging.getLogger(EVENT_LOGGER_NAME)
+event_logger.addHandler(logging.StreamHandler())
+event_logger.setLevel(logging.DEBUG)
+
 # ============================================================================
 # Third-party imports
 # ============================================================================
@@ -47,10 +64,12 @@ import chainlit as cl
 from autogen_core import CancellationToken
 from autogen_core.model_context import UnboundedChatCompletionContext
 
+from autogen_agentchat.agents import UserProxyAgent
 from autogen_agentchat.base import TaskResult
 from autogen_agentchat.conditions import (
     ExternalTermination,
     TextMentionTermination,
+    SourceMatchTermination,
 )
 from autogen_agentchat.messages import (
     ModelClientStreamingChunkEvent,
@@ -62,8 +81,7 @@ from autogen_agentchat.messages import (
 from autogen_agentchat.teams import SelectorGroupChat
 from chainlit.types import ThreadDict
 
-# Centralized Arize/OpenInference instrumentation.
-from orcastration.instrumentation import tracer_provider  # noqa: F401
+
 
 # ============================================================================
 # Project imports
@@ -72,8 +90,7 @@ from orcastration.instrumentation import tracer_provider  # noqa: F401
 from agents.target_search import target_search_agent
 from agents.drug_search import setup_drug_search_agent
 from agents.report import report_agent
-from agents.critique import setup_critique_agent
-from agents.planning import setup_planning_agent
+# Critique and Planning agents removed per configuration: using specialists + ExpertHuman
 from config.llm_client import model_client
 from config.sytem_prompts import SELECT_PROMPT
 
@@ -362,6 +379,54 @@ async def show_pdf(
 
 
 # ============================================================================
+# HUMAN INPUT
+# ============================================================================
+
+async def user_input_func(
+    prompt: str,
+    cancellation_token: CancellationToken | None = None,
+) -> str:
+    """
+    Capture human input through Chainlit.
+
+    CancellationToken is accepted because AutoGen supplies it to the callback.
+    asyncio.CancelledError is the actual Python task-cancellation exception.
+    """
+
+    try:
+        response = await cl.AskUserMessage(
+            content=prompt,
+            timeout=300,
+            raise_on_timeout=True,
+        ).send()
+
+        if response:
+            return response["output"]  # type: ignore[index]
+
+        return "User did not provide any input."
+
+    except asyncio.CancelledError:
+        print("🛑 Human input request was cancelled.")
+        raise
+
+    except TimeoutError:
+        print(
+            "⚠️ User input request timed out after 300 seconds."
+        )
+        return (
+            "User did not provide any input within the time limit."
+        )
+
+    except Exception as exc:
+        print(
+            f"❌ Error getting user input: {exc}"
+        )
+        return (
+            "An error occurred while requesting user input."
+        )
+
+
+# ============================================================================
 # AGENT INITIALIZATION
 # ============================================================================
 
@@ -370,8 +435,7 @@ async def initialize_agents():
     Initialize the complete agent team.
 
     Normal termination:
-        ReportAgent emits TERMINATE after successful PDF generation
-        (via Planning, once all plan steps are done).
+        ReportAgent emits TERMINATE after successful PDF generation.
 
     Manual stop:
         ExternalTermination is available for explicit cancellation.
@@ -380,22 +444,21 @@ async def initialize_agents():
     try:
         # --------------------------------------------------------------------
         # TERMINATION
-        #
-        # IMPORTANT:
-        # SourceMatchTermination("ReportAgent") is intentionally removed.
+        # Use explicit TERMINATE mentions or ExternalTermination to stop.
         # A ReportAgent message alone must NOT stop the task.
-        #
-        # The normal completion signal is TERMINATE.
+        # The normal completion signal is the token 'TERMINATE'.
         # --------------------------------------------------------------------
 
-        termination_word = TextMentionTermination(
-            "TERMINATE"
-        )
+        termination_word = TextMentionTermination("TERMINATE")
+
+        # Only terminate when ReportAgent explicitly emits the single token 'TERMINATE',
+        # to avoid termination triggered by internal thoughts or other agents.
+        source_match_termination = SourceMatchTermination("ReportAgent")
 
         termination_ext = ExternalTermination()
 
         termination = (
-            termination_word
+            (termination_word & source_match_termination)
             | termination_ext
         )
 
@@ -415,31 +478,39 @@ async def initialize_agents():
 
         report = report_agent()
 
-        critique_agent = setup_critique_agent()
+        # Critique and Planning agents removed: using specialist agents + ExpertHuman
 
-        planning_agent = setup_planning_agent()
+        expert_human = UserProxyAgent(
+            name="ExpertHuman",
+            description=(
+                "A Human-in-the-Loop biomedical expert who reviews and "
+                "validates AI-generated findings during the drug discovery "
+                "workflow. The expert provides scientific judgement, "
+                "approves or revises target and drug rankings, resolves "
+                "conflicting evidence, answers clarification requests, "
+                "and records the final human decision before the workflow "
+                "proceeds."
+            ),
+            input_func=user_input_func,
+        )
 
         # --------------------------------------------------------------------
         # SelectorGroupChat
-        #
-        # ExpertHuman / UserProxyAgent removed — the pipeline is fully
-        # autonomous. Planning, Critique, and ReportAgent resolve
-        # NEEDS_REVISION and failure states without a human checkpoint.
         # --------------------------------------------------------------------
 
         team = SelectorGroupChat(
             [
-                planning_agent,
                 target_agent,
                 drug_agent,
                 report,
-                critique_agent,
+                expert_human,
             ],
             model_client=model_client,
             termination_condition=termination,
             allow_repeated_speaker=False,
             selector_prompt=SELECT_PROMPT,
             model_context=model_context,
+            max_selector_attempts=3
         )
 
         print(
@@ -992,6 +1063,12 @@ async def handle_message(
         cancellation_token,
     )
 
+    # Debug: trace CancellationToken creation
+    try:
+        print("🟢 CancellationToken created")
+    except Exception:
+        pass
+
     termination_ext = cl.user_session.get(
         "termination_ext"
     )
@@ -1048,10 +1125,16 @@ async def handle_message(
         # AutoGen streaming
         # --------------------------------------------------------------------
 
+        # Debug: mark run_stream start
+        try:
+            print("▶️ Starting team.run_stream()")
+        except Exception:
+            pass
+
         async for msg in team.run_stream(
             task=TextMessage(
                 content=message.content,
-                source="User",
+                source="ExpertHuman",
             ),
             cancellation_token=cancellation_token,
         ):
@@ -1369,6 +1452,15 @@ async def handle_message(
                 )
 
         # --------------------------------------------------------------------
+        # End of run_stream
+        # --------------------------------------------------------------------
+
+        try:
+            print("⏹️ team.run_stream() exited")
+        except Exception:
+            pass
+
+        # --------------------------------------------------------------------
         # Finalize active stream
         # --------------------------------------------------------------------
 
@@ -1408,77 +1500,53 @@ async def handle_message(
         # The correct exception is asyncio.CancelledError.
         # CancellationToken itself is not an exception namespace.
 
-        print(
-            "🛑 Workflow cancelled by asyncio/Chainlit."
-        )
+        logger.warning("Workflow cancelled by asyncio/Chainlit.", exc_info=True)
 
         if current_streaming_msg is not None:
             try:
                 await current_streaming_msg.send()
             except Exception:
-                pass
+                logger.exception("Failed to flush current streaming message after cancellation.")
 
-        await cl.Message(
-            content=(
-                "🛑 **Task cancelled.**\n\n"
-                "You can start a new query."
-            ),
-            author="System",
-        ).send()
+        try:
+            await cl.Message(
+                content=(
+                    "🛑 **Task cancelled.**\n\n"
+                    "You can start a new query."
+                ),
+                author="System",
+            ).send()
+        except Exception:
+            logger.exception("Failed to send cancellation notice to Chainlit user.")
 
         # Do not convert cancellation to a normal application error.
 
     except Exception as exc:
 
-        print(
-            f"❌ Error in handle_message: "
-            f"{type(exc).__name__}: {exc}"
+        # Log detailed context and traceback
+        logger.exception(
+            "Unhandled error in handle_message | user=%s thread=%s message_count=%s",
+            username,
+            thread_id,
+            cl.user_session.get("message_count", "-"),
         )
 
         import traceback
 
         traceback.print_exc()
 
-        await cl.Message(
-            content=(
-                "❌ **Error occurred during processing**\n\n"
-                f"`{type(exc).__name__}: {exc}`"
-            ),
-            author="System",
-        ).send()
+        try:
+            await cl.Message(
+                content=(
+                    "❌ **Error occurred during processing**\n\n"
+                    f"`{type(exc).__name__}: {exc}`"
+                ),
+                author="System",
+            ).send()
+        except Exception:
+            logger.exception("Failed to notify user about the error via Chainlit message.")
 
     finally:
-
-        # --------------------------------------------------------------------
-        # State save fallback
-        # --------------------------------------------------------------------
-
-        try:
-            has_sent_message = cl.user_session.get(
-                "has_sent_message",
-                False,
-            )
-
-            if (
-                has_sent_message
-                and team is not None
-            ):
-                await save_team_state_to_disk(
-                    team,
-                    username,
-                    thread_id,
-                )
-
-        except Exception as exc:
-
-            print(
-                f"⚠️ Error auto-saving team state: {exc}"
-            )
-
-        # --------------------------------------------------------------------
-        # Unlock
-        # --------------------------------------------------------------------
-
         cl.user_session.set(
             "is_processing",
             False,
@@ -1489,11 +1557,7 @@ async def handle_message(
             None,
         )
 
-        print(
-            "🔓 Processing lock released."
-        )
-
-
+        print("🔓 Processing lock released.")
 # ============================================================================
 # STOP BUTTON
 # ============================================================================
@@ -1505,15 +1569,28 @@ async def on_stop():
     """
 
     try:
+        # Debug: on_stop fired
+        try:
+            print("🛑 on_stop() FIRED")
+        except Exception:
+            pass
+
         token = cl.user_session.get(
             "cancellation_token"
         )
 
         if token is not None:
+            try:
+                print("🛑 on_stop() calling token.cancel()")
+            except Exception:
+                pass
+
             token.cancel()
-            print(
-                "🛑 CancellationToken.cancel() called."
-            )
+
+            try:
+                print("🛑 CancellationToken.cancel() called.")
+            except Exception:
+                pass
 
         # Also trigger the AutoGen ExternalTermination condition
         # when available. This provides a second cancellation path.
@@ -1549,6 +1626,77 @@ async def on_stop():
 # CHAT END
 # ============================================================================
 
+@cl.on_chat_end
+async def on_chat_end():
+    """
+    Cancel active work and persist the session state.
+    """
+
+    try:
+        # Debug: on_chat_end fired
+        try:
+            print("🔴 on_chat_end() FIRED")
+        except Exception:
+            pass
+
+        token = cl.user_session.get(
+            "cancellation_token"
+        )
+
+        if token is not None:
+            try:
+                print("🔴 on_chat_end() calling token.cancel()")
+            except Exception:
+                pass
+
+            token.cancel()
+
+        team = cl.user_session.get(
+            "team"
+        )
+
+        username = cl.user_session.get(
+            "username"
+        )
+
+        thread_id = cl.user_session.get(
+            "thread_id"
+        )
+
+        has_sent_message = cl.user_session.get(
+            "has_sent_message",
+            False,
+        )
+
+        if (
+            has_sent_message
+            and team is not None
+            and username
+            and thread_id
+        ):
+
+            await save_team_state_to_disk(
+                team,
+                username,
+                thread_id,
+            )
+
+            print(
+                f"💾 Final state saved for "
+                f"'{username}' / '{thread_id}'."
+            )
+
+        else:
+
+            print(
+                "⏭️ Chat closed without workflow state."
+            )
+
+    except Exception as exc:
+
+        print(
+            f"⚠️ Error saving state on chat end: {exc}"
+        )
 
 
 # ============================================================================
@@ -1601,3 +1749,5 @@ if __name__ == "__main__":
         "orcastration/main_chainlit.py "
         "-w --host 0.0.0.0 --port 8000"
     )
+
+
