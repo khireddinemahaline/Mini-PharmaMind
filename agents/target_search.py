@@ -2,7 +2,7 @@
 Target Search Agent Module
 
 This module provides the TargetSearch agent, specialized in discovering and
-analyzing disease-associated therapeutic targets using the OpenTargets MCP
+analyzing disease-associated therapeutic targets using the Open Targets MCP
 server. The agent identifies biologically relevant genes, proteins, pathways,
 disease-target associations, biomarkers, and known drug-target interactions
 to support drug discovery workflows.
@@ -18,11 +18,13 @@ Example:
 """
 
 from autogen_agentchat.agents import AssistantAgent
-from autogen_ext.tools.mcp import McpWorkbench, StdioServerParams
+from autogen_ext.tools.mcp import (
+    McpWorkbench,
+    StreamableHttpServerParams,
+)
 
 from config.llm_client import model_client
 from config.sytem_prompts import SYSTEM_PROMPTS_TARGET_SEARCH
-from pathlib import Path
 
 
 async def target_search_agent() -> AssistantAgent:
@@ -52,14 +54,10 @@ async def target_search_agent() -> AssistantAgent:
         >>> # Agent is now ready to process therapeutic target discovery tasks
     """
 
-    project_root = Path(__file__).resolve().parent.parent
+    # Official Open Targets Remote MCP Server
     opentarget_workbench = McpWorkbench(
-        server_params=StdioServerParams(
-            command="node",
-            args=[
-                str(project_root / "mcp-servers" / "OpenTargets-MCP-Server" / "build" / "index.js"),
-            ],
-            read_timeout_seconds=60,
+        server_params=StreamableHttpServerParams(
+            url="https://mcp.platform.opentargets.org/mcp"
         )
     )
 
@@ -82,7 +80,5 @@ async def target_search_agent() -> AssistantAgent:
         system_message=SYSTEM_PROMPTS_TARGET_SEARCH,
         workbench=opentarget_workbench,
         model_client_stream=True,
-                max_tool_iterations=3,
-
-
+        max_tool_iterations=3,
     )
