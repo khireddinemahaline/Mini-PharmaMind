@@ -19,8 +19,6 @@ CONSTRAINTS:
 - Never select the same agent 3 times in a row.
 - Output ONLY the chosen agent name — no explanation or reasoning.
 
-Current conversation:
-{history}
 """
 
 # Planning agent removed — planning responsibilities are handled collaboratively by specialists and ExpertHuman.
