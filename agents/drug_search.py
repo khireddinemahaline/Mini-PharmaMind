@@ -28,7 +28,7 @@ from config.llm_client import model_client
 from config.sytem_prompts import SYSTEM_PROMPTS_DRUG_SEARCH
 
 
-async def drug_search_agent() -> AssistantAgent:
+async def setup_drug_search_agent() -> AssistantAgent:
     """
     Create and configure the DrugSearch agent for drug discovery.
 
