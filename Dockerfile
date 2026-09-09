@@ -50,9 +50,9 @@ RUN /root/.local/bin/uv venv /app/.venv && \
 # ----------------------------------------------------------------------------
 # Build MCP servers
 # ----------------------------------------------------------------------------
-# RUN cd /app/mcp-servers/ChEMBL-MCP-Server && \
-  #  npm install && \
- #   npm run build
+RUN cd /app/mcp-servers/ChEMBL-MCP-Server && \
+   npm install && \
+   npm run build
 
 # RUN cd /app/mcp-servers/OpenTargets-MCP-Server && \
    # npm install && \
