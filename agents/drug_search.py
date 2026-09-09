@@ -1,78 +1,82 @@
 """
 Drug Search Agent Module
-
-This module provides the DrugSearch agent, specialized in discovering and
-analyzing drug candidates using the ChEMBL MCP server.
-
-The agent searches for approved drugs, investigational compounds, small
-molecules, and relevant bioactivity information to support drug discovery
-workflows.
+This module provides the DrugSearch agent, specialized in drug discovery and 
+small-molecule compound analysis. The agent leverages the ChEMBL MCP endpoint
+to identify potential drug candidates, analyze their properties, and evaluate 
+their activity against biological targets.
 
 Functions:
-    drug_search_agent: Factory function to create a configured DrugSearch agent
+    setup_drug_search_agent: Async factory function to create a DrugSearch agent
 
 Example:
-    from agents.drug_search import drug_search_agent
-
-    agent = await drug_search_agent()
-    # Use the agent in your workflow
+    from agents.drug_search import setup_drug_search_agent
+    agent = await setup_drug_search_agent()
+    # Use the agent in your drug discovery workflow
 """
 
-from autogen_agentchat.agents import AssistantAgent
-from autogen_ext.tools.mcp import (
-    McpWorkbench,
-    StreamableHttpServerParams,
-)
 
+from autogen_agentchat.agents import AssistantAgent
+from autogen_ext.tools.mcp import McpWorkbench, StdioServerParams
 from config.llm_client import model_client
 from config.sytem_prompts import SYSTEM_PROMPTS_DRUG_SEARCH
+from pathlib import Path
+
+#linicaltrials_MCP_URL = "https://clinicaltrials.caseyjhand.com/mcp"
 
 
+
+    
 async def setup_drug_search_agent() -> AssistantAgent:
     """
-    Create and configure the DrugSearch agent for drug discovery.
+    Create and configure the DrugSearch agent for drug discovery workflows.
 
     The DrugSearch agent specializes in:
-    - Searching for drug candidates and small molecules
-    - Finding approved and investigational compounds
-    - Retrieving compound information from ChEMBL
-    - Searching and analyzing bioactivity data
-    - Identifying compounds with relevant IC50, Ki, EC50, and related values
-    - Linking compounds to biological targets
-    - Exploring drug mechanisms and indications
-    - Supporting downstream drug discovery and target analysis workflows
+    - Identifying small-molecule drug candidates
+    - Analyzing chemical compound properties
+    - Evaluating drug-target interactions
+    - Retrieving compound activity data from ChEMBL (v34, EMBL-EBI)
 
-    The agent uses the official ChEMBL MCP server through a remote
-    Streamable HTTP connection.
+    Tools are dynamically fetched from the ChEMBL MCP endpoint, covering:
+    - Compound search by name or structure
+    - Bioactivity data (IC50, EC50, Ki)
+    - ADMET and physicochemical properties
+    - Assay and target information
+    - Batch compound lookups
 
     Returns:
-        AssistantAgent: Configured DrugSearch agent ready for use in
-        multi-agent drug discovery workflows.
+        AssistantAgent: Configured drug search agent with streaming enabled
+                        and limited tool iterations for efficient processing.
+
+    Raises:
+        Exception: If the ChEMBL MCP server is unreachable or returns no tools.
 
     Example:
-        >>> agent = await drug_search_agent()
-        >>> # Agent is now ready to process drug discovery tasks
-    """
+        >>> agent = await setup_drug_search_agent()
+        >>> # Agent is now ready to process drug discovery queries
 
-    # Official ChEMBL Remote MCP Server
+    Note:
+        This is an async function and must be awaited when called.
+        The agent has a maximum of 3 tool iterations to prevent excessive API calls.
+    """
+    project_root = Path(__file__).resolve().parent.parent
     chembl_workbench = McpWorkbench(
-        server_params=StreamableHttpServerParams(
-            url="https://chembl.caseyjhand.com/mcp",
+        server_params=StdioServerParams(
+            command="node",
+            args=[
+                str(project_root / "mcp-servers" / "ChEMBL-MCP-Server" / "build" / "index.js"),
+            ],
+            read_timeout_seconds=60,
         )
     )
 
     return AssistantAgent(
         name="DrugSearch",
         description=(
-            "A specialized biomedical research agent focused on drug discovery "
-            "and compound analysis. The agent leverages the ChEMBL MCP workbench "
-            "to discover approved drugs, investigational compounds, and small "
-            "molecules relevant to biomedical research questions. It can retrieve "
-            "compound information, bioactivity measurements, target associations, "
-            "drug mechanisms, indications, and related pharmacological evidence. "
-            "The agent provides structured and scientifically grounded results "
-            "to support compound identification, candidate prioritization, "
-            "mechanism analysis, and downstream drug discovery workflows."
+            "A specialized biomedical research agent focused on discovering and analyzing "
+            "drug candidates. It searches for approved drugs, investigational compounds, "
+            "and small molecules relevant to the user's request by leveraging the ChEMBL "
+            "MCP workbench, identifies promising drug candidates, and provides structured "
+            "results to support downstream scientific analysis and decision-making."
         ),
         model_client=model_client,
         system_message=SYSTEM_PROMPTS_DRUG_SEARCH,
