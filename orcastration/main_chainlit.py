@@ -1,19 +1,14 @@
 """
 Agentic Pharma System - Chainlit Interface
 
-This module provides a conversational AI interface for pharmaceutical research,
-enabling multi-agent collaboration for drug discovery workflows.
-
-Key behavior:
-    - Multi-agent orchestration with AutoGen SelectorGroupChat
-    - Streaming agent output
-    - Visible tool-call events in Chainlit
-    - Human-in-the-loop support
-    - Persistent team state
-    - PDF detection and download after TaskResult
-    - ReportAgent is responsible for normal TERMINATE completion
-    - ExternalTermination is reserved for manual cancellation
-    - Correct asyncio cancellation handling
+Multi-agent pharmaceutical research interface using:
+- Chainlit
+- AutoGen SelectorGroupChat
+- Streaming output
+- Human-in-the-loop
+- Persistent team state
+- PDF detection
+- Workflow cancellation
 """
 
 from __future__ import annotations
@@ -23,15 +18,15 @@ import inspect
 import json
 import logging
 import sys
-import time
+from datetime import datetime
 from pathlib import Path
-from typing import Any, Optional, cast
+from typing import Optional, cast
 
-import chainlit as cl
 from dotenv import load_dotenv
 
+
 # ============================================================================
-# Environment / project root
+# ENVIRONMENT / PROJECT ROOT
 # ============================================================================
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
@@ -46,63 +41,58 @@ if str(PROJECT_ROOT) not in sys.path:
 # LOGGING
 # ============================================================================
 
+from autogen_agentchat import EVENT_LOGGER_NAME, TRACE_LOGGER_NAME
+
+
+logging.basicConfig(level=logging.WARNING)
+
+# Application logger
 logger = logging.getLogger(__name__)
 
-logging.basicConfig(
-    level=logging.INFO,
-    format=(
-        "%(asctime)s | %(levelname)s | "
-        "%(name)s | %(message)s"
-    ),
-)
+# AutoGen trace logger
+trace_logger = logging.getLogger(TRACE_LOGGER_NAME)
+trace_logger.addHandler(logging.StreamHandler())
+trace_logger.setLevel(logging.DEBUG)
 
-try:
-    from autogen_agentchat import (
-        EVENT_LOGGER_NAME,
-        TRACE_LOGGER_NAME,
-    )
-
-    trace_logger = logging.getLogger(TRACE_LOGGER_NAME)
-    trace_logger.setLevel(logging.DEBUG)
-
-    event_logger = logging.getLogger(EVENT_LOGGER_NAME)
-    event_logger.setLevel(logging.DEBUG)
-
-except Exception:
-    trace_logger = logging.getLogger("autogen.trace")
-    event_logger = logging.getLogger("autogen.event")
+# AutoGen event logger
+event_logger = logging.getLogger(EVENT_LOGGER_NAME)
+event_logger.addHandler(logging.StreamHandler())
+event_logger.setLevel(logging.DEBUG)
 
 
 # ============================================================================
-# Third-party imports
+# THIRD-PARTY IMPORTS
 # ============================================================================
+
+import chainlit as cl
 
 from autogen_core import CancellationToken
 from autogen_core.model_context import UnboundedChatCompletionContext
 
 from autogen_agentchat.agents import UserProxyAgent
 from autogen_agentchat.base import TaskResult
+
 from autogen_agentchat.conditions import (
     ExternalTermination,
-    TerminationCondition,
-    TerminatedException,
+    SourceMatchTermination,
+    TextMentionTermination,
 )
+
 from autogen_agentchat.messages import (
-    BaseChatMessage,
-    BaseAgentEvent,
     ModelClientStreamingChunkEvent,
     TextMessage,
     ThoughtEvent,
     ToolCallRequestEvent,
     ToolCallSummaryMessage,
 )
+
 from autogen_agentchat.teams import SelectorGroupChat
 
 from chainlit.types import ThreadDict
 
 
 # ============================================================================
-# Project imports
+# PROJECT IMPORTS
 # ============================================================================
 
 from agents.target_search import target_search_agent
@@ -114,195 +104,83 @@ from config.sytem_prompts import SELECT_PROMPT
 
 
 # ============================================================================
-# Configuration
+# CONFIGURATION
 # ============================================================================
 
 STATE_DIR = PROJECT_ROOT / "session_state"
-
-STATE_DIR.mkdir(
-    parents=True,
-    exist_ok=True,
-)
-
-GENERATED_REPORTS_DIR = (
-    PROJECT_ROOT / "generated_reports"
-)
-
-GENERATED_REPORTS_DIR.mkdir(
-    parents=True,
-    exist_ok=True,
-)
+STATE_DIR.mkdir(parents=True, exist_ok=True)
 
 PDF_DIRS = (
-    GENERATED_REPORTS_DIR,
+    PROJECT_ROOT / "generated_reports",
     PROJECT_ROOT / "resumes_uploaded",
 )
 
+(PROJECT_ROOT / "generated_reports").mkdir(
+    parents=True,
+    exist_ok=True,
+)
+
 
 # ============================================================================
-# CUSTOM TERMINATION CONDITION
+# SAFE CANCELLATION HELPERS
 # ============================================================================
 
-class ReportAgentTermination(TerminationCondition):
+def safe_cancel_token(token) -> bool:
     """
-    Terminates ONLY when ReportAgent explicitly sends:
+    Safely cancel a CancellationToken.
 
-        TERMINATE
-
-    This avoids the potential latching problem caused by combining:
-
-        TextMentionTermination("TERMINATE")
-        &
-        SourceMatchTermination("ReportAgent")
-
-    across different messages.
-    """
-
-    def __init__(self) -> None:
-        self._terminated = False
-
-    @property
-    def terminated(self) -> bool:
-        return self._terminated
-
-    async def __call__(
-        self,
-        messages: list[
-            BaseAgentEvent | BaseChatMessage
-        ],
-    ) -> Optional[BaseChatMessage]:
-
-        if self._terminated:
-            raise TerminatedException(
-                "Termination condition has already been reached."
-            )
-
-        for message in messages:
-
-            source = getattr(
-                message,
-                "source",
-                None,
-            )
-
-            content = getattr(
-                message,
-                "content",
-                None,
-            )
-
-            if (
-                source == "ReportAgent"
-                and isinstance(content, str)
-                and content.strip() == "TERMINATE"
-            ):
-
-                self._terminated = True
-
-                logger.info(
-                    "ReportAgent emitted TERMINATE."
-                )
-
-                return TextMessage(
-                    content="TERMINATE",
-                    source="ReportAgent",
-                )
-
-        return None
-
-    async def reset(self) -> None:
-        self._terminated = False
-
-
-# ============================================================================
-# HELPER: SAFE TOKEN CANCELLATION
-# ============================================================================
-
-def safe_cancel_token(
-    token: Any,
-    context: str,
-) -> bool:
-    """
-    Safely cancel an AutoGen CancellationToken.
-
-    Returns True if cancellation was successfully requested.
+    Returns True if cancellation was requested successfully.
     """
 
     if token is None:
-        logger.debug(
-            "%s: no cancellation token.",
-            context,
-        )
         return False
 
+    # Detect unexpected coroutine/object corruption.
     if inspect.iscoroutine(token):
         logger.error(
-            "%s: cancellation_token is unexpectedly "
-            "a coroutine: %r",
-            context,
+            "Expected CancellationToken but found coroutine: %r",
             token,
         )
 
+        try:
+            token.close()
+        except Exception:
+            pass
+
         return False
 
-    cancel_method = getattr(
-        token,
-        "cancel",
-        None,
-    )
+    cancel_method = getattr(token, "cancel", None)
 
-    if not callable(cancel_method):
-
+    if cancel_method is None or not callable(cancel_method):
         logger.error(
-            "%s: invalid cancellation_token type: %s",
-            context,
-            type(token).__name__,
+            "Invalid cancellation token object: %r",
+            token,
         )
-
         return False
 
     try:
-
         result = cancel_method()
 
-        # Defensive handling if an unexpected implementation
-        # returns an awaitable.
+        # Defensive handling if a future implementation makes it async.
         if inspect.isawaitable(result):
             logger.warning(
-                "%s: token.cancel() returned an awaitable "
-                "and cannot be awaited from this sync helper.",
-                context,
+                "CancellationToken.cancel() returned an awaitable."
             )
-
-        logger.info(
-            "%s: CancellationToken cancelled.",
-            context,
-        )
 
         return True
 
     except Exception:
-
         logger.exception(
-            "%s: failed to cancel token.",
-            context,
+            "Failed to cancel CancellationToken."
         )
-
         return False
 
 
-# ============================================================================
-# HELPER: SAFE EXTERNAL TERMINATION
-# ============================================================================
-
-async def safe_set_external_termination(
-    termination_ext: Any,
-    context: str,
+def safe_set_external_termination(
+    termination_ext,
 ) -> bool:
     """
-    Safely trigger ExternalTermination.
-
-    Supports both synchronous and awaitable implementations.
+    Safely trigger AutoGen ExternalTermination.
     """
 
     if termination_ext is None:
@@ -314,37 +192,67 @@ async def safe_set_external_termination(
         None,
     )
 
-    if not callable(set_method):
-
+    if set_method is None or not callable(set_method):
         logger.error(
-            "%s: invalid ExternalTermination object: %r",
-            context,
+            "Invalid ExternalTermination object: %r",
             termination_ext,
         )
-
         return False
 
     try:
-
         result = set_method()
 
+        # Some versions could theoretically return an awaitable.
         if inspect.isawaitable(result):
-            await result
-
-        logger.info(
-            "%s: ExternalTermination triggered.",
-            context,
-        )
+            logger.warning(
+                "ExternalTermination.set() returned awaitable."
+            )
 
         return True
 
     except Exception:
-
         logger.exception(
-            "%s: failed to trigger ExternalTermination.",
-            context,
+            "Failed to trigger ExternalTermination."
         )
+        return False
 
+
+def safe_reset_external_termination(
+    termination_ext,
+) -> bool:
+    """
+    Safely reset AutoGen ExternalTermination.
+    """
+
+    if termination_ext is None:
+        return False
+
+    reset_method = getattr(
+        termination_ext,
+        "reset",
+        None,
+    )
+
+    if reset_method is None or not callable(reset_method):
+        logger.warning(
+            "ExternalTermination has no reset method."
+        )
+        return False
+
+    try:
+        result = reset_method()
+
+        if inspect.isawaitable(result):
+            logger.warning(
+                "ExternalTermination.reset() returned awaitable."
+            )
+
+        return True
+
+    except Exception:
+        logger.exception(
+            "Failed to reset ExternalTermination."
+        )
         return False
 
 
@@ -383,40 +291,38 @@ async def save_team_state_to_disk(
             encoding="utf-8",
         )
 
-        logger.info(
-            "Team state saved: %s",
-            filepath,
+        print(
+            f"✅ Team state saved to: {filepath}"
         )
 
-        return str(
-            filepath.resolve()
-        )
+        return str(filepath.resolve())
 
     except asyncio.CancelledError:
-
-        logger.warning(
-            "State save was cancelled."
+        print(
+            "🛑 State saving was cancelled."
         )
-
         raise
 
-    except (
-        IOError,
-        OSError,
-        TypeError,
-        ValueError,
-    ):
+    except (IOError, OSError) as exc:
 
         logger.exception(
-            "Failed to save team state."
+            "File I/O error saving team state."
+        )
+
+        print(
+            f"❌ File I/O error saving team state: {exc}"
         )
 
         return None
 
-    except Exception:
+    except Exception as exc:
 
         logger.exception(
             "Unexpected error saving team state."
+        )
+
+        print(
+            f"❌ Unexpected error saving team state: {exc}"
         )
 
         return None
@@ -445,9 +351,8 @@ async def load_team_state_from_disk(
 
         if not filepath.exists():
 
-            logger.info(
-                "State file does not exist: %s",
-                filepath,
+            print(
+                f"ℹ️ State file does not exist: {filepath}"
             )
 
             return False
@@ -459,38 +364,55 @@ async def load_team_state_from_disk(
 
         state = json.loads(data)
 
-        await team.load_state(
-            state
-        )
+        await team.load_state(state)
 
-        logger.info(
-            "Team state loaded: %s",
-            filepath,
+        print(
+            f"✅ Team state loaded from: {filepath}"
         )
 
         return True
 
     except asyncio.CancelledError:
+        print(
+            "🛑 State loading was cancelled."
+        )
         raise
 
-    except (
-        IOError,
-        OSError,
-        json.JSONDecodeError,
-        ValueError,
-        TypeError,
-    ):
+    except (IOError, OSError) as exc:
 
         logger.exception(
-            "Failed to load team state."
+            "File I/O error loading team state."
+        )
+
+        print(
+            f"❌ File I/O error loading state: {exc}"
         )
 
         return False
 
-    except Exception:
+    except (
+        json.JSONDecodeError,
+        ValueError,
+    ) as exc:
+
+        logger.exception(
+            "Invalid JSON in team state."
+        )
+
+        print(
+            f"❌ Invalid JSON in state file: {exc}"
+        )
+
+        return False
+
+    except Exception as exc:
 
         logger.exception(
             "Unexpected error loading team state."
+        )
+
+        print(
+            f"❌ Unexpected error loading state: {exc}"
         )
 
         return False
@@ -518,18 +440,16 @@ def remove_team_state_from_disk(
 
         if not filepath.exists():
 
-            logger.info(
-                "State file already absent: %s",
-                filepath,
+            print(
+                f"⚠️ State file does not exist: {filepath}"
             )
 
             return True
 
         filepath.unlink()
 
-        logger.info(
-            "Team state removed: %s",
-            filepath,
+        print(
+            f"✅ Team state removed: {filepath}"
         )
 
         return True
@@ -538,18 +458,26 @@ def remove_team_state_from_disk(
         IOError,
         OSError,
         PermissionError,
-    ):
+    ) as exc:
 
         logger.exception(
-            "Failed to remove team state."
+            "File system error removing team state."
+        )
+
+        print(
+            f"❌ File system error removing state: {exc}"
         )
 
         return False
 
-    except Exception:
+    except Exception as exc:
 
         logger.exception(
             "Unexpected error removing team state."
+        )
+
+        print(
+            f"❌ Unexpected error removing state: {exc}"
         )
 
         return False
@@ -561,7 +489,7 @@ def remove_team_state_from_disk(
 
 def snapshot_pdf_state() -> dict[Path, int]:
     """
-    Capture modification times of PDFs before the task starts.
+    Capture modification times of existing PDFs.
     """
 
     state: dict[Path, int] = {}
@@ -590,7 +518,7 @@ def find_task_pdfs(
     task_start_ns: int,
 ) -> list[Path]:
     """
-    Return PDFs created or modified during the current task.
+    Find PDFs created or modified during this task.
     """
 
     candidates: list[Path] = []
@@ -615,28 +543,13 @@ def find_task_pdfs(
                 pdf_path
             )
 
-            is_new = (
-                old_mtime is None
-            )
-
-            is_modified = (
-                old_mtime is not None
-                and mtime_ns > old_mtime
-            )
-
-            created_during_task = (
-                mtime_ns >= task_start_ns
-            )
-
             if (
-                is_new
-                or is_modified
-                or created_during_task
+                old_mtime is None
+                or mtime_ns > old_mtime
+                or mtime_ns >= task_start_ns
             ):
 
-                candidates.append(
-                    pdf_path
-                )
+                candidates.append(pdf_path)
 
     return candidates
 
@@ -646,7 +559,7 @@ def find_latest_task_pdf(
     task_start_ns: int,
 ) -> Optional[Path]:
     """
-    Find newest PDF generated or modified during this task.
+    Return newest PDF generated during this task.
     """
 
     candidates = find_task_pdfs(
@@ -669,42 +582,37 @@ def find_latest_task_pdf(
     except OSError:
 
         logger.exception(
-            "Error selecting latest PDF."
+            "Failed while selecting latest PDF."
         )
 
         return None
 
 
 # ============================================================================
-# PDF DISPLAY
+# SHOW PDF
 # ============================================================================
 
 async def show_pdf(
     pdf_path: Path,
 ) -> bool:
     """
-    Display PDF in Chainlit and provide download access.
+    Display PDF in Chainlit.
     """
 
     try:
 
         if not pdf_path.exists():
 
-            logger.warning(
-                "PDF not found: %s",
-                pdf_path,
+            print(
+                f"⚠️ PDF not found: {pdf_path}"
             )
 
             return False
 
-        if (
-            pdf_path.suffix.lower()
-            != ".pdf"
-        ):
+        if pdf_path.suffix.lower() != ".pdf":
 
-            logger.warning(
-                "Not a PDF: %s",
-                pdf_path,
+            print(
+                f"⚠️ Not a PDF file: {pdf_path}"
             )
 
             return False
@@ -739,20 +647,26 @@ async def show_pdf(
             author="System",
         ).send()
 
-        logger.info(
-            "PDF displayed: %s",
-            pdf_path,
+        print(
+            f"📄 PDF displayed: {pdf_path}"
         )
 
         return True
 
     except asyncio.CancelledError:
+        print(
+            "🛑 PDF display was cancelled."
+        )
         raise
 
-    except Exception:
+    except Exception as exc:
 
         logger.exception(
             "Error displaying PDF."
+        )
+
+        print(
+            f"❌ Error displaying PDF: {exc}"
         )
 
         try:
@@ -760,15 +674,13 @@ async def show_pdf(
             await cl.Message(
                 content=(
                     "⚠️ The report was completed, "
-                    "but the PDF could not be displayed "
-                    "automatically.\n\n"
+                    "but the PDF could not be displayed.\n\n"
                     f"`{pdf_path}`"
                 ),
                 author="System",
             ).send()
 
         except Exception:
-
             logger.exception(
                 "Failed to notify user about PDF error."
             )
@@ -782,22 +694,13 @@ async def show_pdf(
 
 async def user_input_func(
     prompt: str,
-    cancellation_token: (
-        CancellationToken | None
-    ) = None,
+    cancellation_token: CancellationToken | None = None,
 ) -> str:
     """
     Capture human input through Chainlit.
     """
 
     try:
-
-        if (
-            cancellation_token is not None
-            and cancellation_token.is_cancelled()
-        ):
-
-            raise asyncio.CancelledError
 
         response = await cl.AskUserMessage(
             content=prompt,
@@ -807,29 +710,25 @@ async def user_input_func(
 
         if response:
 
-            output = response.get(
-                "output"
-            )
+            output = response.get("output")
 
             if output:
                 return str(output)
 
-        return (
-            "User did not provide any input."
-        )
+        return "User did not provide any input."
 
     except asyncio.CancelledError:
 
-        logger.info(
-            "Human input request was cancelled."
+        print(
+            "🛑 Human input request was cancelled."
         )
 
         raise
 
     except asyncio.TimeoutError:
 
-        logger.warning(
-            "User input timed out after 300 seconds."
+        print(
+            "⚠️ User input timed out."
         )
 
         return (
@@ -837,15 +736,30 @@ async def user_input_func(
             "within the time limit."
         )
 
-    except Exception:
+    except TimeoutError:
+
+        print(
+            "⚠️ User input timed out."
+        )
+
+        return (
+            "User did not provide any input "
+            "within the time limit."
+        )
+
+    except Exception as exc:
 
         logger.exception(
             "Error getting human input."
         )
 
+        print(
+            f"❌ Error getting user input: {exc}"
+        )
+
         return (
-            "An error occurred while "
-            "requesting user input."
+            "An error occurred while requesting "
+            "user input."
         )
 
 
@@ -854,14 +768,9 @@ async def user_input_func(
 # ============================================================================
 
 async def initialize_agents():
+
     """
-    Initialize the complete agent team.
-
-    Normal termination:
-        ReportAgent emits exactly TERMINATE.
-
-    Manual stop:
-        ExternalTermination is used.
+    Initialize the AutoGen team.
     """
 
     try:
@@ -870,8 +779,12 @@ async def initialize_agents():
         # TERMINATION
         # --------------------------------------------------------------------
 
-        report_termination = (
-            ReportAgentTermination()
+        termination_word = (
+            TextMentionTermination("TERMINATE")
+        )
+
+        source_match_termination = (
+            SourceMatchTermination("ReportAgent")
         )
 
         termination_ext = (
@@ -879,12 +792,15 @@ async def initialize_agents():
         )
 
         termination = (
-            report_termination
+            (
+                termination_word
+                & source_match_termination
+            )
             | termination_ext
         )
 
         # --------------------------------------------------------------------
-        # Context
+        # CONTEXT
         # --------------------------------------------------------------------
 
         model_context = (
@@ -892,7 +808,7 @@ async def initialize_agents():
         )
 
         # --------------------------------------------------------------------
-        # Agents
+        # AGENTS
         # --------------------------------------------------------------------
 
         target_agent = (
@@ -912,19 +828,14 @@ async def initialize_agents():
             description=(
                 "A Human-in-the-Loop biomedical expert "
                 "who reviews and validates AI-generated "
-                "findings during the drug discovery workflow. "
-                "The expert provides scientific judgement, "
-                "approves or revises target and drug rankings, "
-                "resolves conflicting evidence, answers "
-                "clarification requests, and records the final "
-                "human decision before the workflow proceeds."
+                "findings during the drug discovery workflow."
             ),
 
             input_func=user_input_func,
         )
 
         # --------------------------------------------------------------------
-        # SelectorGroupChat
+        # TEAM
         # --------------------------------------------------------------------
 
         team = SelectorGroupChat(
@@ -949,8 +860,8 @@ async def initialize_agents():
             max_selector_attempts=3,
         )
 
-        logger.info(
-            "Agent team initialized successfully."
+        print(
+            "✅ Agent team initialized successfully."
         )
 
         return (
@@ -959,12 +870,19 @@ async def initialize_agents():
         )
 
     except asyncio.CancelledError:
+        print(
+            "🛑 Agent initialization cancelled."
+        )
         raise
 
-    except Exception:
+    except Exception as exc:
 
         logger.exception(
             "Error initializing agents."
+        )
+
+        print(
+            f"❌ Error initializing agents: {exc}"
         )
 
         raise
@@ -979,12 +897,8 @@ def auth_callback(
     username: str,
     password: str,
 ):
-    """
-    Authenticate the Chainlit user.
-    """
 
-    # Credentials intentionally preserved
-    # exactly as requested.
+    # Credentials intentionally preserved exactly as requested.
 
     if (
         username,
@@ -995,9 +909,7 @@ def auth_callback(
     ):
 
         return cl.User(
-
             identifier="admin",
-
             metadata={
                 "role": "admin",
                 "provider": "credentials",
@@ -1016,105 +928,65 @@ async def chat_profile(
     current_user: cl.User,
 ):
 
-    try:
+    return [
 
-        return [
+        cl.ChatProfile(
 
-            cl.ChatProfile(
+            name="Drug Discovery Researcher",
 
-                name="Drug Discovery Researcher",
+            markdown_description=(
+                "A researcher focused on identifying "
+                "novel drug targets and compounds."
+            ),
 
-                markdown_description=(
-                    "A researcher focused on identifying "
-                    "novel drug targets and compounds."
+            icon="/public/logo.png",
+
+            starters=[
+
+                cl.Starter(
+                    label=(
+                        "Find drug targets for Alzheimer's disease"
+                    ),
+                    message=(
+                        "Search for therapeutic targets associated "
+                        "with Alzheimer's disease and identify "
+                        "potential drug candidates."
+                    ),
+                    icon="/public/adn.png",
                 ),
 
-                icon="/public/logo.png",
-
-                starters=[
-
-                    cl.Starter(
-
-                        label=(
-                            "Find drug targets for "
-                            "Alzheimer's disease"
-                        ),
-
-                        message=(
-                            "Search for therapeutic targets "
-                            "associated with Alzheimer's disease "
-                            "and identify potential drug candidates "
-                            "that could modulate these targets."
-                        ),
-
-                        icon="/public/adn.png",
+                cl.Starter(
+                    label="Analyze aspirin compound",
+                    message=(
+                        "Search for aspirin drug information "
+                        "including molecular structure, mechanism "
+                        "of action, and known targets."
                     ),
+                    icon="/public/drug.png",
+                ),
 
-                    cl.Starter(
-
-                        label="Analyze aspirin compound",
-
-                        message=(
-                            "Search for aspirin drug information "
-                            "including its molecular structure, "
-                            "mechanism of action, and known targets."
-                        ),
-
-                        icon="/public/drug.png",
+                cl.Starter(
+                    label="Cancer drug discovery",
+                    message=(
+                        "Identify potential drug compounds "
+                        "for treating breast cancer."
                     ),
+                    icon="/public/cancer.png",
+                ),
 
-                    cl.Starter(
-
-                        label="Cancer drug discovery",
-
-                        message=(
-                            "Identify potential drug compounds "
-                            "for treating breast cancer, including "
-                            "efficacy data and clinical trial status."
-                        ),
-
-                        icon="/public/cancer.png",
+                cl.Starter(
+                    label=(
+                        "Compare anti-inflammatory drugs"
                     ),
-
-                    cl.Starter(
-
-                        label=(
-                            "Compare anti-inflammatory drugs"
-                        ),
-
-                        message=(
-                            "Compare the mechanisms and efficacy "
-                            "of ibuprofen and naproxen as "
-                            "anti-inflammatory drugs."
-                        ),
-
-                        icon="/public/disease.png",
+                    message=(
+                        "Compare ibuprofen and naproxen "
+                        "as anti-inflammatory drugs."
                     ),
-                ],
-            )
-        ]
-
-    except Exception:
-
-        logger.exception(
-            "Error configuring chat profiles."
+                    icon="/public/disease.png",
+                ),
+            ],
         )
-
-        return [
-
-            cl.ChatProfile(
-
-                name="Drug Discovery Researcher",
-
-                markdown_description=(
-                    "Pharmaceutical research assistant"
-                ),
-
-                icon="/public/logo.png",
-
-                starters=[],
-            )
-        ]
+    ]
 
 
 # ============================================================================
@@ -1128,14 +1000,12 @@ async def on_chat_resume(
 
     try:
 
-        user = cl.user_session.get(
-            "user"
-        )
+        user = cl.user_session.get("user")
 
         if not user:
 
-            logger.warning(
-                "No user found during chat resume."
+            print(
+                "⚠️ No user found during chat resume."
             )
 
             return
@@ -1146,8 +1016,8 @@ async def on_chat_resume(
 
         if not thread_id:
 
-            logger.warning(
-                "No thread ID during chat resume."
+            print(
+                "⚠️ No thread ID available."
             )
 
             return
@@ -1197,7 +1067,6 @@ async def on_chat_resume(
         )
 
         loaded = await load_team_state_from_disk(
-
             team,
             username,
             thread_id,
@@ -1205,44 +1074,28 @@ async def on_chat_resume(
 
         if loaded:
 
-            logger.info(
-                "Resumed thread '%s' for '%s'.",
-                thread_id,
-                username,
+            print(
+                f"✅ Resumed thread '{thread_id}'."
             )
 
         else:
 
-            logger.info(
-                "No saved state for thread '%s'.",
-                thread_id,
+            print(
+                f"ℹ️ No saved state for '{thread_id}'."
             )
 
     except asyncio.CancelledError:
         raise
 
-    except Exception:
+    except Exception as exc:
 
         logger.exception(
-            "Error resuming chat session."
+            "Error resuming chat."
         )
 
-        try:
-
-            await cl.Message(
-
-                content=(
-                    "⚠️ **Session Resume Error**\n\n"
-                    "Starting a fresh session."
-                ),
-
-                author="System",
-            ).send()
-
-        except Exception:
-            logger.exception(
-                "Failed to send resume error."
-            )
+        print(
+            f"❌ Error resuming chat: {exc}"
+        )
 
 
 # ============================================================================
@@ -1254,9 +1107,7 @@ async def start_chat() -> None:
 
     try:
 
-        user = cl.user_session.get(
-            "user"
-        )
+        user = cl.user_session.get("user")
 
         if user:
 
@@ -1272,20 +1123,9 @@ async def start_chat() -> None:
             username = "unknown"
             role = "guest"
 
-    except Exception:
-
-        logger.exception(
-            "Error getting user information."
+        thread_id = (
+            cl.context.session.thread_id
         )
-
-        username = "unknown"
-        role = "guest"
-
-    thread_id = (
-        cl.context.session.thread_id
-    )
-
-    try:
 
         team, termination_ext = (
             await initialize_agents()
@@ -1336,163 +1176,29 @@ async def start_chat() -> None:
             None,
         )
 
-        logger.info(
-            "New session initialized for '%s' "
-            "on thread '%s'.",
-            username,
-            thread_id,
+        print(
+            f"🔵 New session initialized for "
+            f"'{username}' on thread '{thread_id}'."
         )
 
-        logger.info(
-            "Waiting for first message..."
+        print(
+            "⏳ Waiting for first message..."
         )
 
     except asyncio.CancelledError:
         raise
 
-    except Exception:
+    except Exception as exc:
 
         logger.exception(
             "Critical error in start_chat."
         )
 
-        try:
-
-            await cl.Message(
-
-                content=(
-                    "❌ **System initialization failed.**\n\n"
-                    "Please refresh the page and try again."
-                ),
-
-                author="System",
-            ).send()
-
-        except Exception:
-            logger.exception(
-                "Failed to send initialization error."
-            )
+        print(
+            f"❌ Critical error in start_chat: {exc}"
+        )
 
         raise
-
-
-# ============================================================================
-# CLEAR SESSION STATE
-# ============================================================================
-
-@cl.action_callback(
-    "clear_session_state"
-)
-async def on_clear_session_state(
-    action: cl.Action,
-):
-
-    try:
-
-        if cl.user_session.get(
-            "is_processing",
-            False,
-        ):
-
-            await cl.Message(
-                content=(
-                    "⚠️ Cannot clear the session while "
-                    "a workflow is running."
-                ),
-                author="System",
-            ).send()
-
-            return
-
-        username = cl.user_session.get(
-            "username"
-        )
-
-        thread_id = cl.user_session.get(
-            "thread_id"
-        )
-
-        if not username or not thread_id:
-
-            raise RuntimeError(
-                "Missing username or thread ID."
-            )
-
-        success = remove_team_state_from_disk(
-            username,
-            thread_id,
-        )
-
-        if not success:
-
-            await cl.Message(
-
-                content=(
-                    "⚠️ **Could not clear session state.**"
-                ),
-
-                author="System",
-            ).send()
-
-            return
-
-        team, termination_ext = (
-            await initialize_agents()
-        )
-
-        cl.user_session.set(
-            "team",
-            team,
-        )
-
-        cl.user_session.set(
-            "termination_ext",
-            termination_ext,
-        )
-
-        cl.user_session.set(
-            "message_count",
-            0,
-        )
-
-        cl.user_session.set(
-            "has_sent_message",
-            False,
-        )
-
-        cl.user_session.set(
-            "cancellation_token",
-            None,
-        )
-
-        await cl.Message(
-
-            content=(
-                "✅ **Session History Cleared**\n\n"
-                "The saved team state was deleted. "
-                "A new agent team is active."
-            ),
-
-            author="System",
-        ).send()
-
-    except asyncio.CancelledError:
-        raise
-
-    except Exception:
-
-        logger.exception(
-            "Error clearing session state."
-        )
-
-        await cl.Message(
-
-            content=(
-                "❌ **Error clearing session state.**"
-            ),
-
-            author="System",
-        ).send()
 
 
 # ============================================================================
@@ -1504,40 +1210,16 @@ async def handle_message(
     message: cl.Message,
 ) -> None:
 
-    """
-    Execute one multi-agent research workflow.
-
-    Normal flow:
-
-        agents
-        ->
-        ReportAgent
-        ->
-        PDF generation
-        ->
-        TERMINATE
-        ->
-        TaskResult
-        ->
-        PDF displayed
-    """
-
-    # ------------------------------------------------------------------------
-    # Concurrency guard
-    # ------------------------------------------------------------------------
-
     if cl.user_session.get(
         "is_processing",
         False,
     ):
 
         await cl.Message(
-
             content=(
-                "⚠️ **Another request is already being processed.**\n\n"
-                "Please wait or stop the current workflow."
+                "⚠️ **Another request is already "
+                "being processed.**"
             ),
-
             author="System",
         ).send()
 
@@ -1548,23 +1230,19 @@ async def handle_message(
         True,
     )
 
-    current_streaming_msg: Optional[
-        cl.Message
-    ] = None
+    current_streaming_msg = None
 
-    cancellation_token: Optional[
-        CancellationToken
-    ] = None
-
-    task_completed_normally = False
+    cancellation_token = None
 
     username = "Guest"
     thread_id = "unknown"
 
+    task_completed_normally = False
+
     try:
 
         # --------------------------------------------------------------------
-        # Session metrics
+        # SESSION DATA
         # --------------------------------------------------------------------
 
         message_count = (
@@ -1584,37 +1262,42 @@ async def handle_message(
             True,
         )
 
-        username = cl.user_session.get(
-            "username",
-            "Guest",
+        username = (
+            cl.user_session.get(
+                "username",
+                "Guest",
+            )
         )
 
-        thread_id = cl.user_session.get(
-            "thread_id",
-            "unknown",
+        thread_id = (
+            cl.user_session.get(
+                "thread_id",
+                "unknown",
+            )
         )
 
         # --------------------------------------------------------------------
-        # Team
+        # TEAM
         # --------------------------------------------------------------------
 
         team = cast(
-
             Optional[SelectorGroupChat],
-
-            cl.user_session.get(
-                "team"
-            ),
+            cl.user_session.get("team"),
         )
 
         if team is None:
 
-            raise RuntimeError(
-                "Agent team is not initialized."
-            )
+            await cl.Message(
+                content=(
+                    "❌ **Agent team is not initialized.**"
+                ),
+                author="System",
+            ).send()
+
+            return
 
         # --------------------------------------------------------------------
-        # Cancellation
+        # CANCELLATION
         # --------------------------------------------------------------------
 
         cancellation_token = (
@@ -1626,91 +1309,60 @@ async def handle_message(
             cancellation_token,
         )
 
-        logger.info(
-            "CancellationToken created."
-        )
-
         termination_ext = (
             cl.user_session.get(
                 "termination_ext"
             )
         )
 
+        safe_reset_external_termination(
+            termination_ext
+        )
+
         # --------------------------------------------------------------------
-        # PDF tracking
+        # PDF TRACKING
         # --------------------------------------------------------------------
 
-        task_start_ns = time.time_ns()
+        task_start = datetime.now()
+
+        task_start_ns = int(
+            task_start.timestamp()
+            * 1_000_000_000
+        )
 
         known_pdf_state = (
             snapshot_pdf_state()
         )
 
         # --------------------------------------------------------------------
-        # Streaming metrics
+        # STREAMING STATE
         # --------------------------------------------------------------------
 
-        agent_message_count: dict[
-            str,
-            int,
-        ] = {}
+        agent_message_count: dict[str, int] = {}
 
         tool_call_count = 0
 
         total_streamed_chars = 0
 
-        # --------------------------------------------------------------------
-        # Reset termination
-        # --------------------------------------------------------------------
-
-        if termination_ext is not None:
-
-            reset_method = getattr(
-                termination_ext,
-                "reset",
-                None,
-            )
-
-            if callable(reset_method):
-
-                try:
-
-                    result = reset_method()
-
-                    if inspect.isawaitable(
-                        result
-                    ):
-                        await result
-
-                except Exception:
-
-                    logger.exception(
-                        "ExternalTermination reset failed."
-                    )
-
         await cl.Message(
-
             content=(
                 "🚀 **Starting Multi-Agent Analysis...**"
             ),
-
             author="System",
         ).send()
 
-        logger.info(
-            "Starting team.run_stream()."
+        print(
+            "▶️ Starting team.run_stream()"
         )
 
         # --------------------------------------------------------------------
-        # AutoGen streaming
+        # RUN STREAM
         # --------------------------------------------------------------------
 
         async for msg in team.run_stream(
 
             task=TextMessage(
-
                 content=message.content,
-
                 source="ExpertHuman",
             ),
 
@@ -1718,19 +1370,19 @@ async def handle_message(
         ):
 
             # ---------------------------------------------------------------
-            # Explicit cancellation
+            # CANCELLATION CHECK
             # ---------------------------------------------------------------
 
             if cancellation_token.is_cancelled():
 
-                logger.info(
-                    "CancellationToken is cancelled."
+                print(
+                    "🛑 CancellationToken is cancelled."
                 )
 
                 break
 
             # ---------------------------------------------------------------
-            # Common metadata
+            # METADATA
             # ---------------------------------------------------------------
 
             agent_name = getattr(
@@ -1745,13 +1397,9 @@ async def handle_message(
                 else "UnknownAgent"
             )
 
-            msg_type = type(
-                msg
-            ).__name__
+            msg_type = type(msg).__name__
 
-            agent_message_count[
-                agent_name
-            ] = (
+            agent_message_count[agent_name] = (
                 agent_message_count.get(
                     agent_name,
                     0,
@@ -1760,7 +1408,7 @@ async def handle_message(
             )
 
             # ---------------------------------------------------------------
-            # Thought event
+            # THOUGHT EVENT
             # ---------------------------------------------------------------
 
             if isinstance(
@@ -1768,43 +1416,24 @@ async def handle_message(
                 ThoughtEvent,
             ):
 
-                if (
-                    current_streaming_msg
-                    is not None
-                ):
+                if current_streaming_msg is not None:
 
-                    await current_streaming_msg.send()
+                    try:
+                        await current_streaming_msg.send()
+                    except Exception:
+                        logger.exception(
+                            "Failed sending streaming message."
+                        )
 
                     current_streaming_msg = None
 
-                thought_msg = cl.Message(
-
-                    content="⏳ *thinking...*",
-
-                    author=agent_name,
-                )
-
-                await thought_msg.send()
-
-                try:
-
-                    await thought_msg.remove()
-
-                except Exception:
-                    pass
-
-                logger.debug(
-                    "Thought from %s: %s",
-                    agent_name,
-                    getattr(
-                        msg,
-                        "content",
-                        "",
-                    ),
+                print(
+                    f"💭 {agent_name}: "
+                    f"{getattr(msg, 'content', '')}"
                 )
 
             # ---------------------------------------------------------------
-            # Streaming chunks
+            # STREAMING CHUNK
             # ---------------------------------------------------------------
 
             elif isinstance(
@@ -1812,10 +1441,12 @@ async def handle_message(
                 ModelClientStreamingChunkEvent,
             ):
 
-                content = getattr(
-                    msg,
-                    "content",
-                    "",
+                content = str(
+                    getattr(
+                        msg,
+                        "content",
+                        "",
+                    )
                 )
 
                 if not content:
@@ -1831,10 +1462,7 @@ async def handle_message(
                     != agent_name
                 ):
 
-                    if (
-                        current_streaming_msg
-                        is not None
-                    ):
+                    if current_streaming_msg is not None:
 
                         await current_streaming_msg.send()
 
@@ -1846,15 +1474,15 @@ async def handle_message(
                     )
 
                 await current_streaming_msg.stream_token(
-                    str(content)
+                    content
                 )
 
                 total_streamed_chars += len(
-                    str(content)
+                    content
                 )
 
             # ---------------------------------------------------------------
-            # Tool call request
+            # TOOL CALL
             # ---------------------------------------------------------------
 
             elif isinstance(
@@ -1862,10 +1490,7 @@ async def handle_message(
                 ToolCallRequestEvent,
             ):
 
-                if (
-                    current_streaming_msg
-                    is not None
-                ):
+                if current_streaming_msg is not None:
 
                     await current_streaming_msg.send()
 
@@ -1887,7 +1512,6 @@ async def handle_message(
                         )
 
                     await cl.Message(
-
                         content=(
                             f"`{agent_name}` 🛠️ "
                             f"**Calling tool** "
@@ -1896,18 +1520,11 @@ async def handle_message(
                             f"{args_preview}\n"
                             "```"
                         ),
-
                         author=agent_name,
                     ).send()
 
-                    logger.info(
-                        "%s -> tool: %s",
-                        agent_name,
-                        tool_call.name,
-                    )
-
             # ---------------------------------------------------------------
-            # Tool result
+            # TOOL RESULT
             # ---------------------------------------------------------------
 
             elif isinstance(
@@ -1915,37 +1532,22 @@ async def handle_message(
                 ToolCallSummaryMessage,
             ):
 
-                if (
-                    current_streaming_msg
-                    is not None
-                ):
+                if current_streaming_msg is not None:
 
                     await current_streaming_msg.send()
 
                     current_streaming_msg = None
 
                 await cl.Message(
-
                     content=(
                         f"`{agent_name}` 🔄 "
                         "**Tool result received**"
                     ),
-
                     author=agent_name,
                 ).send()
 
-                logger.debug(
-                    "Tool summary from %s: %s",
-                    agent_name,
-                    getattr(
-                        msg,
-                        "content",
-                        "",
-                    ),
-                )
-
             # ---------------------------------------------------------------
-            # Normal agent text
+            # TEXT MESSAGE
             # ---------------------------------------------------------------
 
             elif isinstance(
@@ -1961,13 +1563,11 @@ async def handle_message(
                     )
                 ).strip()
 
-                logger.info(
-                    "Message from %s: %s",
-                    agent_name,
-                    content[:1000],
+                print(
+                    f"📝 {agent_name}: "
+                    f"{content[:1000]}"
                 )
 
-                # Do not duplicate streamed text.
                 if (
                     content
                     and current_streaming_msg is None
@@ -1975,14 +1575,12 @@ async def handle_message(
                 ):
 
                     await cl.Message(
-
                         content=content,
-
                         author=agent_name,
                     ).send()
 
             # ---------------------------------------------------------------
-            # TaskResult
+            # TASK RESULT
             # ---------------------------------------------------------------
 
             elif isinstance(
@@ -1992,10 +1590,7 @@ async def handle_message(
 
                 task_completed_normally = True
 
-                if (
-                    current_streaming_msg
-                    is not None
-                ):
+                if current_streaming_msg is not None:
 
                     await current_streaming_msg.send()
 
@@ -2007,16 +1602,19 @@ async def handle_message(
                     None,
                 )
 
-                logger.info(
-                    "TaskResult received | "
-                    "stop_reason=%s | "
-                    "tools=%s",
-                    stop_reason,
-                    tool_call_count,
+                duration = (
+                    datetime.now()
+                    - task_start
+                ).total_seconds()
+
+                print(
+                    "🏁 TaskResult received | "
+                    f"stop_reason={stop_reason} | "
+                    f"duration={duration:.2f}s | "
+                    f"tools={tool_call_count}"
                 )
 
                 await cl.Message(
-
                     content=(
                         "✅ **Task completed successfully**"
                         + (
@@ -2025,24 +1623,13 @@ async def handle_message(
                             else ""
                         )
                     ),
-
                     author="System",
                 ).send()
 
-                # -----------------------------------------------------------
-                # PDF generated during this task
-                # -----------------------------------------------------------
-
                 latest_pdf = (
                     find_latest_task_pdf(
-
-                        before_state=(
-                            known_pdf_state
-                        ),
-
-                        task_start_ns=(
-                            task_start_ns
-                        ),
+                        before_state=known_pdf_state,
+                        task_start_ns=task_start_ns,
                     )
                 )
 
@@ -2054,163 +1641,151 @@ async def handle_message(
 
                 else:
 
-                    logger.warning(
-                        "Task completed but no new PDF "
-                        "was detected."
-                    )
-
                     await cl.Message(
-
                         content=(
-                            "ℹ️ **Task completed, but no new PDF "
-                            "was detected.**\n\n"
-                            "Check ReportAgent/save_to_pdf and "
-                            "the generated_reports directory."
+                            "ℹ️ **Task completed, but no new "
+                            "PDF was detected.**"
                         ),
-
                         author="System",
                     ).send()
 
             # ---------------------------------------------------------------
-            # Other AutoGen events
+            # OTHER EVENTS
             # ---------------------------------------------------------------
 
             else:
 
-                logger.debug(
-                    "Unhandled AutoGen event: %s",
-                    msg_type,
+                print(
+                    f"ℹ️ Unhandled AutoGen event: "
+                    f"{msg_type}"
                 )
 
-        logger.info(
-            "team.run_stream() exited."
+        # --------------------------------------------------------------------
+        # STREAM FINISHED
+        # --------------------------------------------------------------------
+
+        print(
+            "⏹️ team.run_stream() exited"
         )
 
-        # --------------------------------------------------------------------
-        # Save state
-        # --------------------------------------------------------------------
+        if current_streaming_msg is not None:
+
+            try:
+                await current_streaming_msg.send()
+            except Exception:
+                logger.exception(
+                    "Failed to flush final stream."
+                )
+
+            current_streaming_msg = None
+
+        print(
+            "📊 Workflow metrics | "
+            f"agents={agent_message_count} | "
+            f"tool_calls={tool_call_count} | "
+            f"streamed_chars={total_streamed_chars}"
+        )
 
         if task_completed_normally:
 
             await save_team_state_to_disk(
-
                 team,
                 username,
                 thread_id,
             )
 
+    # ------------------------------------------------------------------------
+    # ASYNCIO CANCELLATION
+    # ------------------------------------------------------------------------
+
     except asyncio.CancelledError:
 
         logger.warning(
-            "Workflow cancelled by asyncio/Chainlit."
+            "Workflow cancelled by asyncio/Chainlit.",
+            exc_info=True,
+        )
+
+        print(
+            "🛑 Workflow received asyncio.CancelledError."
         )
 
         if current_streaming_msg is not None:
 
             try:
-
                 await current_streaming_msg.send()
-
             except Exception:
-
                 logger.exception(
-                    "Failed to flush streaming message."
+                    "Failed to flush stream after cancellation."
                 )
 
         try:
 
             await cl.Message(
-
                 content=(
                     "🛑 **Task cancelled.**\n\n"
                     "You can start a new query."
                 ),
-
                 author="System",
             ).send()
 
         except Exception:
-
             logger.exception(
-                "Failed to send cancellation notice."
+                "Failed sending cancellation notice."
             )
 
-        # Do not raise a new exception here.
+        # Important: do not raise a new NameError here.
+
+    # ------------------------------------------------------------------------
+    # GENERIC ERROR
+    # ------------------------------------------------------------------------
 
     except Exception as exc:
 
         logger.exception(
             "Unhandled error in handle_message | "
-            "user=%s thread=%s message_count=%s",
+            "user=%s thread=%s",
             username,
             thread_id,
-            cl.user_session.get(
-                "message_count",
-                "-",
-            ),
+        )
+
+        print(
+            f"❌ Unhandled error: "
+            f"{type(exc).__name__}: {exc}"
         )
 
         try:
 
             await cl.Message(
-
                 content=(
                     "❌ **Error occurred during processing**\n\n"
                     f"`{type(exc).__name__}: {exc}`"
                 ),
-
                 author="System",
             ).send()
 
         except Exception:
-
             logger.exception(
                 "Failed to notify user about error."
             )
 
+    # ------------------------------------------------------------------------
+    # FINALLY
+    # ------------------------------------------------------------------------
+
     finally:
-
-        # --------------------------------------------------------------------
-        # Finalize stream
-        # --------------------------------------------------------------------
-
-        if current_streaming_msg is not None:
-
-            try:
-
-                await current_streaming_msg.send()
-
-            except Exception:
-                pass
-
-        # --------------------------------------------------------------------
-        # Clear cancellation token only if it belongs
-        # to this workflow.
-        # --------------------------------------------------------------------
-
-        current_token = (
-            cl.user_session.get(
-                "cancellation_token"
-            )
-        )
-
-        if (
-            cancellation_token is not None
-            and current_token is cancellation_token
-        ):
-
-            cl.user_session.set(
-                "cancellation_token",
-                None,
-            )
 
         cl.user_session.set(
             "is_processing",
             False,
         )
 
-        logger.info(
-            "Processing lock released."
+        cl.user_session.set(
+            "cancellation_token",
+            None,
+        )
+
+        print(
+            "🔓 Processing lock released."
         )
 
 
@@ -2221,28 +1796,24 @@ async def handle_message(
 @cl.on_stop
 async def on_stop():
 
-    """
-    Cancel the currently running workflow.
-    """
-
     try:
 
-        logger.info(
-            "on_stop() fired."
+        print(
+            "🛑 on_stop() FIRED"
         )
 
         token = cl.user_session.get(
             "cancellation_token"
         )
 
-        safe_cancel_token(
-            token,
-            "on_stop",
-        )
+        if token is not None:
 
-        # --------------------------------------------------------------------
-        # Trigger ExternalTermination
-        # --------------------------------------------------------------------
+            print(
+                f"🛑 Cancellation object type: "
+                f"{type(token)}"
+            )
+
+            safe_cancel_token(token)
 
         termination_ext = (
             cl.user_session.get(
@@ -2250,33 +1821,25 @@ async def on_stop():
             )
         )
 
-        await safe_set_external_termination(
-            termination_ext,
-            "on_stop",
+        safe_set_external_termination(
+            termination_ext
         )
 
         await cl.Message(
-
             content=(
                 "🛑 **Stop requested.**\n\n"
                 "The current workflow is being cancelled."
             ),
-
             author="System",
         ).send()
 
     except asyncio.CancelledError:
-
-        logger.info(
-            "on_stop() was cancelled."
-        )
-
         raise
 
     except Exception:
 
         logger.exception(
-            "Error in on_stop()."
+            "Error in on_stop."
         )
 
 
@@ -2287,62 +1850,24 @@ async def on_stop():
 @cl.on_chat_end
 async def on_chat_end():
 
-    """
-    Handle chat shutdown safely.
-
-    Important:
-        We cancel active work, but we DO NOT attempt to save
-        SelectorGroupChat state while run_stream() may still be active.
-
-    Concurrent save_state() during a cancelled workflow can create
-    unstable behavior depending on the AutoGen runtime version.
-    """
-
     try:
 
-        logger.info(
-            "on_chat_end() fired."
+        print(
+            "🔴 on_chat_end() FIRED"
         )
 
         token = cl.user_session.get(
             "cancellation_token"
         )
 
-        safe_cancel_token(
-            token,
-            "on_chat_end",
-        )
+        if token is not None:
 
-        termination_ext = (
-            cl.user_session.get(
-                "termination_ext"
-            )
-        )
-
-        await safe_set_external_termination(
-            termination_ext,
-            "on_chat_end",
-        )
-
-        is_processing = (
-            cl.user_session.get(
-                "is_processing",
-                False,
-            )
-        )
-
-        # --------------------------------------------------------------------
-        # Do not save while workflow is active.
-        # --------------------------------------------------------------------
-
-        if is_processing:
-
-            logger.info(
-                "Chat ended while workflow was active. "
-                "Cancellation requested; state save skipped."
+            print(
+                f"🔴 Chat-end cancellation object type: "
+                f"{type(token)}"
             )
 
-            return
+            safe_cancel_token(token)
 
         team = cl.user_session.get(
             "team"
@@ -2363,8 +1888,16 @@ async def on_chat_end():
             )
         )
 
+        # Do not save state if a workflow is actively running.
+        # Saving AutoGen state while the team is mutating can cause problems.
+        is_processing = cl.user_session.get(
+            "is_processing",
+            False,
+        )
+
         if (
             has_sent_message
+            and not is_processing
             and team is not None
             and username
             and thread_id
@@ -2376,30 +1909,40 @@ async def on_chat_end():
                 thread_id,
             )
 
-            logger.info(
-                "Final state saved for '%s' / '%s'.",
-                username,
-                thread_id,
+            print(
+                f"💾 Final state saved for "
+                f"'{username}' / '{thread_id}'."
+            )
+
+        elif is_processing:
+
+            print(
+                "⏭️ Chat ended while workflow was processing. "
+                "Skipping concurrent state save."
             )
 
         else:
 
-            logger.info(
-                "Chat closed without workflow state."
+            print(
+                "⏭️ Chat closed without workflow state."
             )
 
     except asyncio.CancelledError:
 
-        logger.info(
-            "on_chat_end() was cancelled."
+        print(
+            "🛑 on_chat_end cancelled."
         )
 
         raise
 
-    except Exception:
+    except Exception as exc:
 
         logger.exception(
-            "Error handling chat end."
+            "Error during on_chat_end."
+        )
+
+        print(
+            f"⚠️ Error saving state on chat end: {exc}"
         )
 
 
@@ -2408,28 +1951,15 @@ async def on_chat_end():
 # ============================================================================
 
 @cl.on_settings_update
-async def setup_agent_settings(
-    settings,
-):
-
-    """
-    Handle settings updates.
-    """
+async def setup_agent_settings(settings):
 
     try:
 
-        logger.info(
-            "Settings updated: %s",
-            settings,
-        )
-
         await cl.Message(
-
             content=(
                 "⚙️ **Settings Updated**\n\n"
                 "Your preferences have been received."
             ),
-
             author="System",
         ).send()
 
@@ -2441,23 +1971,6 @@ async def setup_agent_settings(
         logger.exception(
             "Error updating settings."
         )
-
-        try:
-
-            await cl.Message(
-
-                content=(
-                    "⚠️ **Settings update failed.**"
-                ),
-
-                author="System",
-            ).send()
-
-        except Exception:
-
-            logger.exception(
-                "Failed to notify user about settings error."
-            )
 
 
 # ============================================================================
@@ -2477,5 +1990,5 @@ if __name__ == "__main__":
     print(
         "chainlit run "
         "orcastration/main_chainlit.py "
-        "--host 0.0.0.0 --port 8000"
+        "-w --host 0.0.0.0 --port 8000"
     )
